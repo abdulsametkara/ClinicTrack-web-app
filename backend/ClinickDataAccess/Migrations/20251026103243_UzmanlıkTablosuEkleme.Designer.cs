@@ -4,6 +4,7 @@ using ClinickDataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClinickDataAccess.Migrations
 {
     [DbContext(typeof(DatabaseBaglanti))]
-    partial class DatabaseBaglantiModelSnapshot : ModelSnapshot
+    [Migration("20251026103243_UzmanlıkTablosuEkleme")]
+    partial class UzmanlıkTablosuEkleme
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -174,26 +177,6 @@ namespace ClinickDataAccess.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Randevular");
-                });
-
-            modelBuilder.Entity("ClinickCore.Uzmanlık", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("RecordDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UzmanlıkAdı")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Uzmanlıklar");
                 });
 #pragma warning restore 612, 618
         }

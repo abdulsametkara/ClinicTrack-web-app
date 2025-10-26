@@ -10,7 +10,10 @@ namespace ClinickCore
     {
         public int HastaId { get; set; }
         public int DoktorId { get; set; }
+        public int UzmanlıkId { get; set; }
         public DateTime RandevuTarihi { get; set; }
         public string Durum { get; set; }
+        public string HastaŞikayeti { get; set; }
+        public string DoktorNotları { get; set; }
     }
 }

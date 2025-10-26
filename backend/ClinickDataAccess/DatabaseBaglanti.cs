@@ -15,6 +15,7 @@ namespace ClinickDataAccess
         public DbSet<Hasta> Hastalar { get; set; }
         public DbSet<Kullanıcı> Kullanıcılar { get; set; }
         public DbSet<Randevu> Randevular { get; set; }
+        public DbSet<Uzmanlık> Uzmanlıklar { get; set; }
         #endregion
 
 
