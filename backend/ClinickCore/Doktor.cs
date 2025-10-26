@@ -10,7 +10,7 @@ namespace ClinickCore
     {
         public string İsim { get; set; }
         public string Soyisim { get; set; }
-        public string UzmanlıkAlanı { get; set; }
+        public int UzmanlıkId { get; set; }
         public string TelefonNumarası { get; set; }
         public string Email { get; set; }
     }
