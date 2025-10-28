@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ClinickService.Response
 {
-    public class ResponseGeneric<T> : Response
+    public class ResponseGeneric<T> : Responses
     {
         public T Data { get; set; }
         public ResponseGeneric(T data, bool isSuccess, string message) : base(isSuccess, message)

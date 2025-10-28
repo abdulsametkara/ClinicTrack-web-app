@@ -1,4 +1,6 @@
-﻿using ClinickCore.Entities;
+﻿using ClinickCore;
+using ClinickCore.DTOs;
+using ClinickCore.Entities;
 using ClinickService.Response;
 using System;
 using System.Collections.Generic;
@@ -10,11 +12,11 @@ namespace ClinickService.Interfaces
 {
     public interface IKullanıcıService
     {
-        IResponse KullanıcıEkle(Kullanıcı kullanıcı);
+        ResponseGeneric<Kullanıcı> KullanıcıEkle(KullanıcıOlusturDto kullanıcı);
         ResponseGeneric<List<Kullanıcı>> TumKullanıcılarıGetir();
         ResponseGeneric<Kullanıcı> KullanıcıGetirById(int id);
-        IResponse KullanıcıGuncelle(int id, Kullanıcı kullanıcı);
-        IResponse KullanıcıSil(int id);
+        ResponseGeneric<Kullanıcı> KullanıcıGuncelle(int id, KullanıcıGüncelleDto kullanıcı);
+        Responses KullanıcıSil(int id);
 
     }
 }

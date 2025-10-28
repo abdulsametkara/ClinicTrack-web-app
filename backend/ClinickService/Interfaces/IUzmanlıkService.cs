@@ -10,10 +10,10 @@ namespace ClinickService.Interfaces
 {
     public interface IUzmanlıkService
     {
-        IResponse UzmanlıkEkle(string uzmanlıkAdı);
+        ResponseGeneric<Uzmanlık> UzmanlıkEkle(string uzmanlıkAdı);
         ResponseGeneric<List<Uzmanlık>> TumUzmanlıklarıGetir();
         ResponseGeneric<Uzmanlık> UzmanlıkGetirById(int id);
-        IResponse UzmanlıkGuncelle(int id, string uzmanlıkAdı);
-        IResponse UzmanlıkSil(int id);
+        ResponseGeneric<Uzmanlık> UzmanlıkGuncelle(int id, string uzmanlıkAdı);
+        Responses UzmanlıkSil(int id);
     }
 }

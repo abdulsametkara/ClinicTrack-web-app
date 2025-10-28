@@ -1,4 +1,6 @@
-﻿using ClinickCore.Entities;
+﻿using ClinickCore;
+using ClinickCore.DTOs;
+using ClinickCore.Entities;
 using ClinickService.Response;
 using System;
 using System.Collections.Generic;
@@ -10,11 +12,11 @@ namespace ClinickService.Interfaces
 {
     public interface IHastaService
     {
-        IResponse HastaEkle(Hasta hasta);
+        ResponseGeneric<Hasta> HastaEkle(HastaOlusturDto hasta);
         ResponseGeneric<List<Hasta>> TumHastalariGetir();
         ResponseGeneric<Hasta> HastaGetirById(int id);
-        IResponse HastaGuncelle(int id, Hasta hasta);
-        IResponse HastaSil(int id);
+        ResponseGeneric<Hasta> HastaGuncelle(int id, HastaGüncelleDto hasta);
+        Responses HastaSil(int id);
 
     }
 }
