@@ -7,25 +7,25 @@ using System.Threading.Tasks;
 
 namespace ClinickService.Response
 {
-    public class Response : IResponse
+    public class Responses : IResponses
     {
         public bool IsSuccess { get ; set ; }
         public string Message { get ; set ; }
 
-        public Response(bool isSuccess, string message)
+        public Responses(bool isSuccess, string message)
         {
             IsSuccess = isSuccess;
             Message = message;
         }
 
-        public static Response Success(string message)
+        public static Responses Success(string message)
         {
-            return new Response(true, message);
+            return new Responses(true, message);
         }
 
-        public static Response Error(string message)
+        public static Responses Error(string message)
         {
-            return new Response(false, message);
+            return new Responses(false, message);
         }
     }
 }

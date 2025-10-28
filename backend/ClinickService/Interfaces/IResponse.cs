@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ClinickService.Interfaces
 {
-    public interface IResponse
+    public interface IResponses
     {
         bool IsSuccess { get; set; }
         string Message { get; set; }

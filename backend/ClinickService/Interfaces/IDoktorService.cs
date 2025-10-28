@@ -1,4 +1,6 @@
-﻿using ClinickCore.Entities;
+﻿using ClinickCore;
+using ClinickCore.DTOs;
+using ClinickCore.Entities;
 using ClinickService.Response;
 using System;
 using System.Collections.Generic;
@@ -10,11 +12,11 @@ namespace ClinickService.Interfaces
 {
     public interface IDoktorService
     {
-        IResponse DoktorEkle(Doktor doktor);
+        ResponseGeneric<Doktor> DoktorEkle(DoktorOlusturDto doktor);
         ResponseGeneric<List<Doktor>> TumDoktolarıGetir();
         ResponseGeneric<Doktor> DoktorGetirById(int id);
-        IResponse DoktorGuncelle(int id, Doktor doktor);
-        IResponse DoktorSil(int id);
+        ResponseGeneric<Doktor> DoktorGuncelle(int id, DoktorGüncelleDto doktor);
+        Responses DoktorSil(int id);
         ResponseGeneric<List<Doktor>> DoktorGetirUzmanlığaGore(int uzmanlıkId);
         ResponseGeneric<List<Randevu>> DoktorRandevularınıGetir(int doktorId);
 
