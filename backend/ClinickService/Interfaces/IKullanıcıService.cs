@@ -1,4 +1,4 @@
-﻿using ClinickCore;
+﻿using ClinickCore.Entities;
 using ClinickService.Response;
 using System;
 using System.Collections.Generic;
