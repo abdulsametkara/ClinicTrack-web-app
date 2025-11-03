@@ -56,6 +56,10 @@ namespace ClinickService.Services
         public ResponseGeneric<List<Hasta>> TumHastalariGetir()
         {
             var hastalar = _hastaRepository.GetAll().ToList();
+            if(hastalar.Count == 0)
+            {
+                return ResponseGeneric<List<Hasta>>.Error("Kayıtlı hasta bulunamadı.");
+            }
             return ResponseGeneric<List<Hasta>>.Success(hastalar, "Tüm hastalar başarıyla getirildi.");
         }
 
@@ -87,11 +91,13 @@ namespace ClinickService.Services
             {
                 return ResponseGeneric<Hasta>.Error("Hasta bilgileri boş olamaz.");
             }
+
             var mevcutHasta = _hastaRepository.GetById(id);
             if (mevcutHasta == null)
             {
                 return ResponseGeneric<Hasta>.Error("Belirtilen ID'ye sahip hasta bulunamadı.");
             }
+
             if (mevcutHasta.TelefonNumarası != hasta.TelefonNumarası)
             {
                 var telKontrol = _hastaRepository.GetAll().FirstOrDefault(h => h.TelefonNumarası == hasta.TelefonNumarası);
@@ -99,7 +105,9 @@ namespace ClinickService.Services
                 {
                     return ResponseGeneric<Hasta>.Error("Bu telefon numarasına sahip bir hasta zaten mevcut.");
                 }
+                mevcutHasta.TelefonNumarası = hasta.TelefonNumarası;
             }
+
             if (mevcutHasta.Email != hasta.Email)
             {
                 var emailKontrol = _hastaRepository.GetAll().FirstOrDefault(h => h.Email == hasta.Email);
@@ -107,7 +115,9 @@ namespace ClinickService.Services
                 {
                     return ResponseGeneric<Hasta>.Error("Bu email adresine sahip bir hasta zaten mevcut.");
                 }
+                mevcutHasta.Email = hasta.Email;
             }
+
             _hastaRepository.Update(mevcutHasta);
             return ResponseGeneric<Hasta>.Success(mevcutHasta, "Hasta başarıyla güncellendi.");
         }
