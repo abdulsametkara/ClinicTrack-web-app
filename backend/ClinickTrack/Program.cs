@@ -1,4 +1,9 @@
+﻿using ClinickCore;
+using ClinickCore.Entities;
 using ClinickDataAccess;
+using ClinickDataAccess.Repository;
+using ClinickService.Interfaces;
+using ClinickService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +15,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<DatabaseBaglanti>();
+
+//Servis implamantosyonları
+builder.Services.AddScoped<IGenericRepository<Doktor>, GenericRepository<Doktor>>();
+builder.Services.AddScoped<IGenericRepository<Uzmanlık>, GenericRepository<Uzmanlık>>();
+builder.Services.AddScoped<IGenericRepository<Randevu>, GenericRepository<Randevu>>();
+builder.Services.AddScoped<IDoktorService, DoktorService>();
+builder.Services.AddScoped<IUzmanlıkService, UzmanlıkService>();
+
 
 var app = builder.Build();
 
