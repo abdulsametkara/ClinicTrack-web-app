@@ -3,6 +3,7 @@ using ClinickCore.Entities;
 using ClinickDataAccess.Repository;
 using ClinickService.Interfaces;
 using ClinickService.Response;
+using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -33,161 +34,216 @@ namespace ClinickService.Services
         }
         public Responses DoktorNotEkle(int randevuId, string not)
         {
-            var randevu = _randevuRepository.GetById(randevuId);
-            if (randevu == null)
+            try
             {
-                return Responses.Error("Girilen id'ye ait randevu bulunamadı.");
+                var randevu = _randevuRepository.GetById(randevuId);
+                if (randevu == null)
+                {
+                    return Responses.Error("Girilen id'ye ait randevu bulunamadı.");
+                }
+                if (string.IsNullOrWhiteSpace(not))
+                {
+                    return Responses.Error("Not boş olamaz");
+                }
+                randevu.DoktorNotları = not.Trim();
+                _randevuRepository.Update(randevu);
+                return Responses.Success("Randevu notu başarıyla eklendi.");
             }
-            if (string.IsNullOrWhiteSpace(not))
+            catch(Exception ex)
             {
-                return Responses.Error("Not boş olamaz");
+                return Responses.Error("Bir hata oluştu." + ex.Message);
             }
-            randevu.DoktorNotları = not.Trim();
-            _randevuRepository.Update(randevu);
-            return Responses.Success("Randevu notu başarıyla eklendi.");
         }
 
         public ResponseGeneric<List<Randevu>> DoktorRandevularınıGetir(int doktorId)
         {
-            var doktor = _doktorRepository.GetById(doktorId);
-            if (doktor == null)
+            try
             {
-                return ResponseGeneric<List<Randevu>>.Error("Girilen id'ye ait doktor bulunamadı.");
+                var doktor = _doktorRepository.GetById(doktorId);
+                if (doktor == null)
+                {
+                    return ResponseGeneric<List<Randevu>>.Error("Girilen id'ye ait doktor bulunamadı.");
+                }
+                var randevular = _randevuRepository.GetAll().Where(x => x.DoktorId == doktorId).OrderByDescending(x => x.RandevuTarihi).ToList();
+                if (randevular.Count == 0)
+                {
+                    return ResponseGeneric<List<Randevu>>.Error("Doktora ait randevu bulunamadı.");
+                }
+                return ResponseGeneric<List<Randevu>>.Success(randevular, "Doktora ait randevular başarıyla getirildi");
             }
-            var randevular = _randevuRepository.GetAll().Where(x => x.DoktorId == doktorId).OrderByDescending(x => x.RandevuTarihi).ToList();
-            if (randevular.Count == 0)
+            catch(Exception ex)
             {
-                return ResponseGeneric<List<Randevu>>.Error("Doktora ait randevu bulunamadı.");
+                return ResponseGeneric<List<Randevu>>.Error("Bir hata oluştu." + ex.Message);
             }
-            return ResponseGeneric<List<Randevu>>.Success(randevular, "Doktora ait randevular başarıyla getirildi");
         }
 
         public Responses GeçmişRandevularıTamamla()
         {
-            var gecmisRandevular = _randevuRepository.GetAll().Where(x => x.RandevuTarihi < DateTime.Now && x.Durum == "Beklemede").ToList();
-            if (gecmisRandevular.Count == 0)
+            try
             {
-                return Responses.Error("Geçmiş ve tamamlanması gereken randevu bulunamadı.");
-            }
-            foreach (var randevu in gecmisRandevular)
-            {
-                randevu.Durum = "Tamamlandı";
-                _randevuRepository.Update(randevu);
-            }
+                var gecmisRandevular = _randevuRepository.GetAll().Where(x => x.RandevuTarihi < DateTime.Now && x.Durum == "Beklemede").ToList();
+                if (gecmisRandevular.Count == 0)
+                {
+                    return Responses.Error("Geçmiş ve tamamlanması gereken randevu bulunamadı.");
+                }
+                foreach (var randevu in gecmisRandevular)
+                {
+                    randevu.Durum = "Tamamlandı";
+                    _randevuRepository.Update(randevu);
+                }
 
-            return Responses.Success("Geçmiş randevu durumları otomatik olarak güncellendi.");
+                return Responses.Success("Geçmiş randevu durumları otomatik olarak güncellendi.");
+            }
+            catch(Exception ex)
+            {
+                return Responses.Error("Bir hata oluştu." + ex.Message);
+            }
         }
 
-        public ResponseGeneric<List<Randevu>> HastaRandevularınıGetir(int hastaId)  
+        public ResponseGeneric<List<Randevu>> HastaRandevularınıGetir(int hastaId)
         {
-            var hasta = _hastaRepository.GetById(hastaId);
-            if (hasta == null)
+            try
             {
-                return ResponseGeneric<List<Randevu>>.Error("Girilen id'ye ait hasta bulunamadı");
-            }
+                var hasta = _hastaRepository.GetById(hastaId);
+                if (hasta == null)
+                {
+                    return ResponseGeneric<List<Randevu>>.Error("Girilen id'ye ait hasta bulunamadı");
+                }
 
-            var randevular = _randevuRepository.GetAll().Where(x => x.HastaId == hastaId).OrderByDescending(x => x.RandevuTarihi).ToList();
-            if (randevular.Count == 0)
+                var randevular = _randevuRepository.GetAll().Where(x => x.HastaId == hastaId).OrderByDescending(x => x.RandevuTarihi).ToList();
+                if (randevular.Count == 0)
+                {
+                    return ResponseGeneric<List<Randevu>>.Error("Hastaya ait randevu bulunamadı");
+                }
+                return ResponseGeneric<List<Randevu>>.Success(randevular, "Hastaya ait randevular başarıyla getirildi.");
+            }
+            catch(Exception ex)
             {
-                return ResponseGeneric<List<Randevu>>.Error("Hastaya ait randevu bulunamadı");
+                return ResponseGeneric<List<Randevu>>.Error("Bir hata oluştu." + ex.Message);
             }
-            return ResponseGeneric<List<Randevu>>.Success(randevular, "Hastaya ait randevular başarıyla getirildi.");
-
         }
 
         public ResponseGeneric<Randevu> RandevuDurumGuncelle(int randevuId, string yeniDurum)
         {
-            var randevu = _randevuRepository.GetById(randevuId);
-            if (randevu == null)
+            try
             {
-                return ResponseGeneric<Randevu>.Error("Girilen id'ye ait randevu bulunamadı.");
+                var randevu = _randevuRepository.GetById(randevuId);
+                if (randevu == null)
+                {
+                    return ResponseGeneric<Randevu>.Error("Girilen id'ye ait randevu bulunamadı.");
+                }
+                if (yeniDurum != "Beklemede" && yeniDurum != "Tamamlandı" && yeniDurum != "İptal")
+                {
+                    return ResponseGeneric<Randevu>.Error("Girilen randevu durumu geçerli değildir. Tamamlandı, Beklemede veya İptal durumları geçerlidir.");
+                }
+                randevu.Durum = yeniDurum;
+                _randevuRepository.Update(randevu);
+                return ResponseGeneric<Randevu>.Success(randevu, "Randevu durumu başarıyla gerçekleşti.");
             }
-            if (yeniDurum != "Beklemede" && yeniDurum != "Tamamlandı" && yeniDurum != "İptal")
+            catch(Exception ex)
             {
-                return ResponseGeneric<Randevu>.Error("Girilen randevu durumu geçerli değildir. Tamamlandı, Beklemede veya İptal durumları geçerlidir.");
+                return ResponseGeneric<Randevu>.Error("Bir hata oluştu." + ex.Message);
             }
-            randevu.Durum = yeniDurum;
-            _randevuRepository.Update(randevu);
-            return ResponseGeneric<Randevu>.Success(randevu, "Randevu durumu başarıyla gerçekleşti.");
         }
 
         public ResponseGeneric<Randevu> RandevuEkle(int hastaId, int doktorId, DateTime randevuTarihi)
         {
-            if (randevuTarihi < DateTime.Now)
+            try
             {
-                return ResponseGeneric<Randevu>.Error("Seçtiğiniz tarihe randevu alamazsınız.");
+                if (randevuTarihi < DateTime.Now)
+                {
+                    return ResponseGeneric<Randevu>.Error("Seçtiğiniz tarihe randevu alamazsınız.");
+                }
+
+                var hasta = _hastaRepository.GetById(hastaId);
+                if (hasta == null)
+                {
+                    return ResponseGeneric<Randevu>.Error("Girdiğiniz id'ye ait hasta bulunamadı");
+                }
+
+                var doktor = _doktorRepository.GetById(doktorId);
+                if (doktor == null)
+                {
+                    return ResponseGeneric<Randevu>.Error("Girdiğiniz id'ye ait doktor bulunamadı");
+                }
+
+                var uzmanlık = _uzmanlıkRepository.GetById(doktor.UzmanlıkId);
+                if (uzmanlık == null)
+                {
+                    return ResponseGeneric<Randevu>.Error("Doktor uzmanlığı bulunamadı");
+                }
+
+                if (!RandevuUygunMu(doktorId, randevuTarihi))
+                {
+                    return ResponseGeneric<Randevu>.Error("Seçilen doktorun bu tarih ve saatte randevusu bulunmaktadır.");
+                }
+
+                var yeniRandevu = new Randevu()
+                {
+                    HastaId = hastaId,
+                    DoktorId = doktorId,
+                    UzmanlıkId = doktor.UzmanlıkId,
+                    RandevuTarihi = randevuTarihi,
+                    Durum = "Beklemede", //ilk durumu
+                    DoktorNotları = "",
+                    HastaŞikayeti = "",
+                    RecordDate = DateTime.Now
+                };
+
+                _randevuRepository.Create(yeniRandevu);
+                return ResponseGeneric<Randevu>.Success(yeniRandevu, "Randevu başarıyla oluşturuldu");
             }
-
-            var hasta = _hastaRepository.GetById(hastaId);
-            if (hasta == null)
+            catch(Exception ex)
             {
-                return ResponseGeneric<Randevu>.Error("Girdiğiniz id'ye ait hasta bulunamadı");
+                return ResponseGeneric<Randevu>.Error("Bir hata oluştu." + ex.Message);
             }
-
-            var doktor = _doktorRepository.GetById(doktorId);
-            if (doktor == null)
-            {
-                return ResponseGeneric<Randevu>.Error("Girdiğiniz id'ye ait doktor bulunamadı");
-            }
-
-            var uzmanlık = _uzmanlıkRepository.GetById(doktor.UzmanlıkId);
-            if (uzmanlık == null)
-            {
-                return ResponseGeneric<Randevu>.Error("Doktor uzmanlığı bulunamadı");
-            }
-
-            if (!RandevuUygunMu(doktorId, randevuTarihi))
-            {
-                return ResponseGeneric<Randevu>.Error("Seçilen doktorun bu tarih ve saatte randevusu bulunmaktadır.");
-            }
-
-            var yeniRandevu = new Randevu()
-            {
-                HastaId = hastaId,
-                DoktorId = doktorId,
-                UzmanlıkId = doktor.UzmanlıkId,
-                RandevuTarihi = randevuTarihi,
-                Durum = "Beklemede", //ilk durumu
-                DoktorNotları = "",
-                HastaŞikayeti = "",
-                RecordDate = DateTime.Now
-            };
-
-            _randevuRepository.Create(yeniRandevu);
-            return ResponseGeneric<Randevu>.Success(yeniRandevu, "Randevu başarıyla oluşturuldu");
         }
 
         public ResponseGeneric<Randevu> RandevuGetirById(int randevuId)
         {
-            var randevu = _randevuRepository.GetById(randevuId);
-            if (randevu == null)
+            try
             {
-                return ResponseGeneric<Randevu>.Error("Girilen id'ye ait randevu bulunamadı.");
+                var randevu = _randevuRepository.GetById(randevuId);
+                if (randevu == null)
+                {
+                    return ResponseGeneric<Randevu>.Error("Girilen id'ye ait randevu bulunamadı.");
+                }
+                return ResponseGeneric<Randevu>.Success(randevu, "Randevu başarıyla getirildi.");
             }
-            return ResponseGeneric<Randevu>.Success(randevu, "Randevu başarıyla getirildi.");
+            catch(Exception ex)
+            {
+                return ResponseGeneric<Randevu>.Error("Bir hata oluştu." + ex.Message);
+            }
         }
 
         public Responses RandevuIptal(int randevuId)
         {
-            var randevu = _randevuRepository.GetById(randevuId);
-            if (randevu == null)
+            try
             {
-                return Responses.Error("Girilen id'ye ait randevu bulunamadı");
-            }
+                var randevu = _randevuRepository.GetById(randevuId);
+                if (randevu == null)
+                {
+                    return Responses.Error("Girilen id'ye ait randevu bulunamadı");
+                }
 
-            if (randevu.Durum == "İptal")
+                if (randevu.Durum == "İptal")
+                {
+                    return Responses.Error("Randevu zaten iptal edilmiş");
+                }
+
+                if (randevu.Durum == "Tamamlandı")
+                {
+                    return Responses.Error("Tamamlanmış randevu iptal edilemez");
+                }
+
+                randevu.Durum = "İptal";
+                _randevuRepository.Update(randevu);
+                return Responses.Success("Randevu başarıyla iptal edildi.");
+            }
+            catch(Exception ex)
             {
-                return Responses.Error("Randevu zaten iptal edilmiş");
+                return Responses.Error("Bir hata oluştu." + ex.Message);
             }
-
-            if (randevu.Durum == "Tamamlandı")
-            {
-                return Responses.Error("Tamamlanmış randevu iptal edilemez");
-            }
-
-            randevu.Durum = "İptal";
-            _randevuRepository.Update(randevu);
-            return Responses.Success("Randevu başarıyla iptal edildi.");
         }
 
         public bool RandevuUygunMu(int doktorId, DateTime randevuTarihi)
@@ -199,12 +255,19 @@ namespace ClinickService.Services
 
         public ResponseGeneric<List<Randevu>> TümRandevularıGetir()
         {
-            var randevular = _randevuRepository.GetAll().ToList();
-            if (randevular.Count == 0)
+            try
             {
-                return ResponseGeneric<List<Randevu>>.Error("Kayıtlı randevu bulunamadı");
+                var randevular = _randevuRepository.GetAll().ToList();
+                if (randevular.Count == 0)
+                {
+                    return ResponseGeneric<List<Randevu>>.Error("Kayıtlı randevu bulunamadı");
+                }
+                return ResponseGeneric<List<Randevu>>.Success(randevular, "Randevular başarıyla getirildi.");
             }
-            return ResponseGeneric<List<Randevu>>.Success(randevular, "Randevular başarıyla getirildi.");
+            catch(Exception ex)
+            {
+                return ResponseGeneric<List<Randevu>>.Error("Bir hata oluştu." + ex.Message);
+            }
         }
     }
 }

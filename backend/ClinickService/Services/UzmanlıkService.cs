@@ -22,82 +22,116 @@ namespace ClinickService.Services
 
         public ResponseGeneric<List<Uzmanlık>> TumUzmanlıklarıGetir()
         {
-            var uzmanlık = uzmanlıkRepository.GetAll().ToList();
-            if (uzmanlık.Count == 0)
+            try
             {
-                return ResponseGeneric<List<Uzmanlık>>.Error("Uzmanlıklar bulunamadı.");
+                var uzmanlık = uzmanlıkRepository.GetAll().ToList();
+                if (uzmanlık.Count == 0)
+                {
+                    return ResponseGeneric<List<Uzmanlık>>.Error("Uzmanlıklar bulunamadı.");
+                }
+                return ResponseGeneric<List<Uzmanlık>>.Success(uzmanlık, "Uzmanlıklar başarıyla getirildi.");
             }
-            return ResponseGeneric<List<Uzmanlık>>.Success(uzmanlık, "Uzmanlıklar başarıyla getirildi.");
+            catch(Exception ex)
+            {
+                return ResponseGeneric<List<Uzmanlık>>.Error("Bir hata oluştu." + ex.Message);
+            }
         }
 
 
 
         public ResponseGeneric<Uzmanlık> UzmanlıkEkle(string uzmanlıkAdı)
         {
-            if (string.IsNullOrWhiteSpace(uzmanlıkAdı))
+            try
             {
-                return ResponseGeneric<Uzmanlık>.Error("Uzmanlık adı boş bırakılamaz.");
-            }
+                if (string.IsNullOrWhiteSpace(uzmanlıkAdı))
+                {
+                    return ResponseGeneric<Uzmanlık>.Error("Uzmanlık adı boş bırakılamaz.");
+                }
 
-            var mevcutUzmanlık = uzmanlıkRepository.GetAll().FirstOrDefault(x => x.UzmanlıkAdı.ToLower() == uzmanlıkAdı.ToLower());
-            if (mevcutUzmanlık != null)
-            {
-                return ResponseGeneric<Uzmanlık>.Error("Uzmanlık adı zaten mevcut.");
-            }
+                var mevcutUzmanlık = uzmanlıkRepository.GetAll().FirstOrDefault(x => x.UzmanlıkAdı.ToLower() == uzmanlıkAdı.ToLower());
+                if (mevcutUzmanlık != null)
+                {
+                    return ResponseGeneric<Uzmanlık>.Error("Uzmanlık adı zaten mevcut.");
+                }
 
-            var yeniUzmanlık = new Uzmanlık
+                var yeniUzmanlık = new Uzmanlık
+                {
+                    UzmanlıkAdı = uzmanlıkAdı.Trim(),
+                    RecordDate = DateTime.Now
+                };
+                uzmanlıkRepository.Create(yeniUzmanlık);
+                return ResponseGeneric<Uzmanlık>.Success(yeniUzmanlık, "Yeni uzmanlık başarıyla oluşturuldu.");
+            }
+            catch(Exception ex)
             {
-                UzmanlıkAdı = uzmanlıkAdı.Trim(),
-                RecordDate = DateTime.Now
-            };
-            uzmanlıkRepository.Create(yeniUzmanlık);
-            return ResponseGeneric<Uzmanlık>.Success(yeniUzmanlık, "Yeni uzmanlık başarıyla oluşturuldu.");
-            
+                return ResponseGeneric<Uzmanlık>.Error("Bir hata oluştu." + ex.Message);
+            }
         }
 
         public ResponseGeneric<Uzmanlık> UzmanlıkGetirById(int id)
         {
-            var uzmanlık = uzmanlıkRepository.GetById(id);
-            if (uzmanlık == null)
+            try
             {
-                return ResponseGeneric<Uzmanlık>.Error("Girilen id'ye ait uzmanlık bulunamadı");
+                var uzmanlık = uzmanlıkRepository.GetById(id);
+                if (uzmanlık == null)
+                {
+                    return ResponseGeneric<Uzmanlık>.Error("Girilen id'ye ait uzmanlık bulunamadı");
+                }
+                return ResponseGeneric<Uzmanlık>.Success(uzmanlık, "Uzmanlık bulundu.");
             }
-            return ResponseGeneric<Uzmanlık>.Success(uzmanlık, "Uzmanlık bulundu.");
+            catch(Exception ex)
+            {
+                return ResponseGeneric<Uzmanlık>.Error("Bir hata oluştu." + ex.Message);
+            }
         }
 
         public ResponseGeneric<Uzmanlık> UzmanlıkGuncelle(int id, string uzmanlıkAdı)
         {
-            if (string.IsNullOrWhiteSpace(uzmanlıkAdı))
+            try
             {
-                return ResponseGeneric<Uzmanlık>.Error("Uzmanlık adı boş bırakılamaz.");
-            }
+                if (string.IsNullOrWhiteSpace(uzmanlıkAdı))
+                {
+                    return ResponseGeneric<Uzmanlık>.Error("Uzmanlık adı boş bırakılamaz.");
+                }
 
-            var uzmanlık = uzmanlıkRepository.GetById(id);
-            if (uzmanlık == null)
+                var uzmanlık = uzmanlıkRepository.GetById(id);
+                if (uzmanlık == null)
+                {
+                    return ResponseGeneric<Uzmanlık>.Error("Girilen id'ye ait uzmanlık bulunamadı.");
+                }
+
+                var mevcutUzmanlık = uzmanlıkRepository.GetAll().FirstOrDefault(x => x.UzmanlıkAdı.ToLower() == uzmanlıkAdı.ToLower() && x.Id != id);
+                if (mevcutUzmanlık != null)
+                {
+                    return ResponseGeneric<Uzmanlık>.Error("Uzmanlık adı zaten mevcut.");
+                }
+                uzmanlık.UzmanlıkAdı = uzmanlıkAdı.Trim();
+
+                uzmanlıkRepository.Update(uzmanlık);
+                return ResponseGeneric<Uzmanlık>.Success(uzmanlık, "Uzmanlık başarıyla güncellendi.");
+            }
+            catch(Exception ex)
             {
-                return ResponseGeneric<Uzmanlık>.Error("Girilen id'ye ait uzmanlık bulunamadı.");
+                return ResponseGeneric<Uzmanlık>.Error("Bir hata oluştu." + ex.Message);
             }
-
-            var mevcutUzmanlık = uzmanlıkRepository.GetAll().FirstOrDefault(x => x.UzmanlıkAdı.ToLower() == uzmanlıkAdı.ToLower() && x.Id != id);
-            if (mevcutUzmanlık != null)
-            {
-                return ResponseGeneric<Uzmanlık>.Error("Uzmanlık adı zaten mevcut.");
-            }
-            uzmanlık.UzmanlıkAdı = uzmanlıkAdı.Trim();
-
-            uzmanlıkRepository.Update(uzmanlık);
-            return ResponseGeneric<Uzmanlık>.Success(uzmanlık, "Uzmanlık başarıyla güncellendi.");
         }
 
         public Responses UzmanlıkSil(int id)
         {
-            var uzmanlık = uzmanlıkRepository.GetById(id);
-            if (uzmanlık == null)
+            try
             {
-                return Responses.Error("Uzmanlık bulunamadı.");
+                var uzmanlık = uzmanlıkRepository.GetById(id);
+                if (uzmanlık == null)
+                {
+                    return Responses.Error("Uzmanlık bulunamadı.");
+                }
+                uzmanlıkRepository.Delete(uzmanlık);
+                return Responses.Success("Uzmanlık başarıyla silindi.");
             }
-            uzmanlıkRepository.Delete(uzmanlık);
-            return Responses.Success("Uzmanlık başarıyla silindi.");
+            catch(Exception ex)
+            {
+                return Responses.Error("Bir hata oluştu." + ex.Message);
+            }
         }
     }
 }
