@@ -20,8 +20,12 @@ builder.Services.AddDbContext<DatabaseBaglanti>();
 builder.Services.AddScoped<IGenericRepository<Doktor>, GenericRepository<Doktor>>();
 builder.Services.AddScoped<IGenericRepository<Uzmanlık>, GenericRepository<Uzmanlık>>();
 builder.Services.AddScoped<IGenericRepository<Randevu>, GenericRepository<Randevu>>();
+builder.Services.AddScoped<IGenericRepository<Hasta>, GenericRepository<Hasta>>();
 builder.Services.AddScoped<IDoktorService, DoktorService>();
 builder.Services.AddScoped<IUzmanlıkService, UzmanlıkService>();
+builder.Services.AddScoped<IRandevuService, RandevuService>();
+builder.Services.AddScoped<IHastaService, HastaService>();
+
 
 
 var app = builder.Build();

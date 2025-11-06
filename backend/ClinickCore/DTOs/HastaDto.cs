@@ -19,7 +19,6 @@ namespace ClinickCore.DTOs
 
     public class HastaGüncelleDto
     {
-        public int HastaId { get; set; }
         public string TelefonNumarası { get; set; }
         public string Email { get; set; }
     }

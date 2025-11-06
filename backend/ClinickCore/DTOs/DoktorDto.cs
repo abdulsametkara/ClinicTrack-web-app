@@ -16,7 +16,6 @@ namespace ClinickCore.DTOs
     }
     public class DoktorGüncelleDto
     {
-        public int DoktorId { get; set; }
         public int? UzmanlıkId { get; set; }
         public string TelefonNumarası { get; set; }
         public string Email { get; set; }

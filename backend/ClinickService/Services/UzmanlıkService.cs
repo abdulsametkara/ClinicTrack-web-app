@@ -37,8 +37,6 @@ namespace ClinickService.Services
             }
         }
 
-
-
         public ResponseGeneric<Uzmanlık> UzmanlıkEkle(string uzmanlıkAdı)
         {
             try
