@@ -1,4 +1,5 @@
-﻿using ClinickService.Interfaces;
+﻿using ClinickCore.DTOs;
+using ClinickService.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,12 +15,82 @@ namespace ClinickTrackApi.Controllers
             _doktorService = doktorService;
         }
 
-        [HttpGet("TumDoktorlariGetir")]
-        public IActionResult GetAll()
+        [HttpGet("getAll")]
+        public IActionResult TumDoktorlariGetir()
         {
-            var doktorlar = _doktorService.TumDoktolarıGetir();
-            return Ok(doktorlar);
-
+            var sonuc = _doktorService.TumDoktolarıGetir();
+            if (!sonuc.IsSuccess)
+            {
+                return NotFound(sonuc);
+            }
+            return Ok(sonuc);
         }
+
+        [HttpGet("getById/{id}")]
+        public IActionResult DoktorGetirById(int id)
+        {
+            var sonuc = _doktorService.DoktorGetirById(id);
+            if (!sonuc.IsSuccess)
+            {
+                return NotFound(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
+        [HttpPost("add")]
+        public IActionResult DoktorEkle([FromBody] DoktorOlusturDto dto)
+        {
+            var sonuc = _doktorService.DoktorEkle(dto);
+            if (!sonuc.IsSuccess)
+            {
+                return BadRequest(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
+        [HttpPut("update/{id}")]
+        public IActionResult DoktorGuncelle(int id, [FromBody] DoktorGüncelleDto dto)
+        {
+            var sonuc = _doktorService.DoktorGuncelle(id, dto);
+            if (!sonuc.IsSuccess)
+            {
+                return BadRequest(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
+        [HttpDelete("delete/{id}")]
+        public IActionResult DoktorSil(int id)
+        {
+            var sonuc = _doktorService.DoktorSil(id);
+            if (!sonuc.IsSuccess)
+            {
+                return NotFound(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
+        [HttpGet("uzmanlik/{uzmanlikId}")]
+        public IActionResult DoktorGetirUzmanlığaGore(int uzmanlikId)
+        {
+            var sonuc = _doktorService.DoktorGetirUzmanlığaGore(uzmanlikId);
+            if (!sonuc.IsSuccess)
+            {
+                return BadRequest(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
+        [HttpGet("{doktorId}/randevular")]
+        public IActionResult DoktorRandevularınıGetir(int doktorId)
+        {
+            var sonuc = _doktorService.DoktorRandevularınıGetir(doktorId);
+            if (!sonuc.IsSuccess)
+            {
+                return BadRequest(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
     }
 }

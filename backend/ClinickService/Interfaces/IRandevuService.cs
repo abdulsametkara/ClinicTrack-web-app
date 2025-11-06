@@ -1,4 +1,5 @@
 ﻿using ClinickCore;
+using ClinickCore.DTOs;
 using ClinickCore.Entities;
 using ClinickService.Response;
 using System;
@@ -11,7 +12,7 @@ namespace ClinickService.Interfaces
 {
     public interface IRandevuService
     {
-        ResponseGeneric<Randevu> RandevuEkle(int hastaId, int doktorId, DateTime randevuTarihi);
+        ResponseGeneric<Randevu> RandevuEkle(RandevuOlusturDto dto);
         Responses RandevuIptal(int randevuId);
         ResponseGeneric<List<Randevu>> HastaRandevularınıGetir(int hastaId);
         ResponseGeneric<List<Randevu>> DoktorRandevularınıGetir(int doktorId);
@@ -21,5 +22,7 @@ namespace ClinickService.Interfaces
         ResponseGeneric<Randevu> RandevuDurumGuncelle(int randevuId, string yeniDurum);
         Responses DoktorNotEkle(int randevuId, string not);
         Responses GeçmişRandevularıTamamla();
+        Responses RandevuSil(int randevuId);
+
     }
 }

@@ -1,4 +1,5 @@
 ﻿using ClinickCore;
+using ClinickCore.DTOs;
 using ClinickCore.Entities;
 using ClinickDataAccess.Repository;
 using ClinickService.Interfaces;
@@ -134,34 +135,34 @@ namespace ClinickService.Services
                 }
                 if (yeniDurum != "Beklemede" && yeniDurum != "Tamamlandı" && yeniDurum != "İptal")
                 {
-                    return ResponseGeneric<Randevu>.Error("Girilen randevu durumu geçerli değildir. Tamamlandı, Beklemede veya İptal durumları geçerlidir.");
+                    return ResponseGeneric<Randevu>.Error("Girilen randevu durumu geçerli değildir.");
                 }
                 randevu.Durum = yeniDurum;
                 _randevuRepository.Update(randevu);
-                return ResponseGeneric<Randevu>.Success(randevu, "Randevu durumu başarıyla gerçekleşti.");
+                return ResponseGeneric<Randevu>.Success(randevu, "Randevu durumu başarıyla güncellendi.");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                return ResponseGeneric<Randevu>.Error("Bir hata oluştu." + ex.Message);
+                return ResponseGeneric<Randevu>.Error($"Bir hata oluştu: {ex.Message}");
             }
         }
 
-        public ResponseGeneric<Randevu> RandevuEkle(int hastaId, int doktorId, DateTime randevuTarihi)
+        public ResponseGeneric<Randevu> RandevuEkle(RandevuOlusturDto dto)
         {
             try
             {
-                if (randevuTarihi < DateTime.Now)
+                if (dto.RandevuTarihi < DateTime.Now)
                 {
                     return ResponseGeneric<Randevu>.Error("Seçtiğiniz tarihe randevu alamazsınız.");
                 }
 
-                var hasta = _hastaRepository.GetById(hastaId);
+                var hasta = _hastaRepository.GetById(dto.HastaId);
                 if (hasta == null)
                 {
                     return ResponseGeneric<Randevu>.Error("Girdiğiniz id'ye ait hasta bulunamadı");
                 }
 
-                var doktor = _doktorRepository.GetById(doktorId);
+                var doktor = _doktorRepository.GetById(dto.DoktorId);
                 if (doktor == null)
                 {
                     return ResponseGeneric<Randevu>.Error("Girdiğiniz id'ye ait doktor bulunamadı");
@@ -173,20 +174,20 @@ namespace ClinickService.Services
                     return ResponseGeneric<Randevu>.Error("Doktor uzmanlığı bulunamadı");
                 }
 
-                if (!RandevuUygunMu(doktorId, randevuTarihi))
+                if (!RandevuUygunMu(dto.DoktorId, dto.RandevuTarihi))
                 {
                     return ResponseGeneric<Randevu>.Error("Seçilen doktorun bu tarih ve saatte randevusu bulunmaktadır.");
                 }
 
                 var yeniRandevu = new Randevu()
                 {
-                    HastaId = hastaId,
-                    DoktorId = doktorId,
+                    HastaId = dto.HastaId,
+                    DoktorId = dto.DoktorId,
                     UzmanlıkId = doktor.UzmanlıkId,
-                    RandevuTarihi = randevuTarihi,
+                    RandevuTarihi = dto.RandevuTarihi,
                     Durum = "Beklemede", //ilk durumu
                     DoktorNotları = "",
-                    HastaŞikayeti = "",
+                    HastaŞikayeti = dto.HastaŞikayeti ?? "",
                     RecordDate = DateTime.Now
                 };
 
@@ -267,6 +268,24 @@ namespace ClinickService.Services
             catch(Exception ex)
             {
                 return ResponseGeneric<List<Randevu>>.Error("Bir hata oluştu." + ex.Message);
+            }
+        }
+        public Responses RandevuSil(int randevuId)
+        {
+            try
+            {
+                var randevu = _randevuRepository.GetById(randevuId);
+                if (randevu == null)
+                {
+                    return Responses.Error("Randevu bulunamadı.");
+                }
+
+                _randevuRepository.Delete(randevu);
+                return Responses.Success("Randevu veritabanından silindi.");
+            }
+            catch (Exception ex)
+            {
+                return Responses.Error("Bir hata oluştu." + ex.Message);
             }
         }
     }
