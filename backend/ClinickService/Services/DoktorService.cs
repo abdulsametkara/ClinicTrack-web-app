@@ -1,5 +1,4 @@
-﻿using ClinickCore;
-using ClinickCore.DTOs;
+﻿using ClinickCore.DTOs;
 using ClinickCore.Entities;
 using ClinickDataAccess.Repository;
 using ClinickService.Interfaces;
@@ -16,15 +15,19 @@ namespace ClinickService.Services
     public class DoktorService : IDoktorService
     {
         private readonly IGenericRepository<Doktor> _doktorRepository;
+        private readonly IGenericRepository<Kullanıcı> _kullanıcıRepository;
         private readonly IGenericRepository<Uzmanlık> _uzmanlıkRepository;
         private readonly IGenericRepository<Randevu> _randevuRepository;
+        
         public DoktorService(
             IGenericRepository<Doktor> doktorRepository,
+            IGenericRepository<Kullanıcı> kullanıcıRepository,
             IGenericRepository<Uzmanlık> uzmanlıkRepository,
             IGenericRepository<Randevu> randevuRepository
             )
         {
             _doktorRepository = doktorRepository;
+            _kullanıcıRepository = kullanıcıRepository;
             _uzmanlıkRepository = uzmanlıkRepository;
             _randevuRepository = randevuRepository;
         }
@@ -43,33 +46,49 @@ namespace ClinickService.Services
                     return ResponseGeneric<Doktor>.Error("Belirtilen uzmanlık bulunamadı.");
                 }
 
-                var emailKontrol = _doktorRepository.GetAll().FirstOrDefault(x => x.Email == doktor.Email);
-                if (emailKontrol != null)
+                var emailKontrol = _kullanıcıRepository.GetAll().Any(u => u.Email == doktor.Email);
+                if (emailKontrol)
                 {
                     return ResponseGeneric<Doktor>.Error("Bu email adresi zaten kullanılıyor.");
                 }
 
-                var telKontrol = _doktorRepository.GetAll().FirstOrDefault(x => x.TelefonNumarası == doktor.TelefonNumarası);
-                if (telKontrol != null)
+                var telKontrol = _kullanıcıRepository.GetAll().Any(u => u.TelefonNumarası == doktor.TelefonNumarası);
+                if (telKontrol)
                 {
                     return ResponseGeneric<Doktor>.Error("Bu telefon numarası zaten kullanılıyor.");
                 }
 
-                var yeniDoktor = new Doktor
+                var yeniKullanıcı = new Kullanıcı
                 {
                     İsim = doktor.İsim,
                     Soyisim = doktor.Soyisim,
+                    TCNo = doktor.TCNo,
+                    Email = doktor.Email,
+                    Parola = "DoktorSifre123",
+                    Rol = "Doktor",
                     UzmanlıkId = doktor.UzmanlıkId,
                     TelefonNumarası = doktor.TelefonNumarası,
-                    Email = doktor.Email,
+                    OluşturulmaTarihi = DateTime.Now,
+                    RecordDate = DateTime.Now
+                };
+                _kullanıcıRepository.Create(yeniKullanıcı);
+
+                var yeniDoktor = new Doktor
+                {
+                    KullanıcıId = yeniKullanıcı.Id,
+                    UzmanlıkId = doktor.UzmanlıkId,
+                    DiplomaNo = doktor.DiplomaNo,
+                    MezuniyetTarihi = doktor.MezuniyetTarihi,
+                    Ünvan = doktor.Ünvan,
                     RecordDate = DateTime.Now
                 };
                 _doktorRepository.Create(yeniDoktor);
+                
                 return ResponseGeneric<Doktor>.Success(yeniDoktor, "Doktor başarıyla eklendi.");
             }
             catch(Exception ex)
             {
-                return ResponseGeneric<Doktor>.Error("Bir hata oluştu." + ex.Message);
+                return ResponseGeneric<Doktor>.Error("Bir hata oluştu. " + ex.Message);
             }
         }
 
@@ -133,6 +152,12 @@ namespace ClinickService.Services
                     return ResponseGeneric<Doktor>.Error("Girilen id'li doktor bulunamadı.");
                 }
 
+                var kullanıcı = _kullanıcıRepository.GetById(kayıtlıDoktor.KullanıcıId);
+                if (kullanıcı == null)
+                {
+                    return ResponseGeneric<Doktor>.Error("Doktor kullanıcı bilgisi bulunamadı.");
+                }
+
                 if (doktor.UzmanlıkId.HasValue && doktor.UzmanlıkId != kayıtlıDoktor.UzmanlıkId)
                 {
                     var uzmanlık = _uzmanlıkRepository.GetById(doktor.UzmanlıkId.Value);
@@ -141,33 +166,46 @@ namespace ClinickService.Services
                         return ResponseGeneric<Doktor>.Error("Uzmanlık bulunamadı.");
                     }
                     kayıtlıDoktor.UzmanlıkId = doktor.UzmanlıkId.Value;
+                    kullanıcı.UzmanlıkId = doktor.UzmanlıkId.Value;
                 }
 
-                if (doktor.Email != null && doktor.Email != kayıtlıDoktor.Email)
+                if (!string.IsNullOrEmpty(doktor.Email) && doktor.Email != kullanıcı.Email)
                 {
-                    var emailKontrol = _doktorRepository.GetAll().FirstOrDefault(x => x.Email == doktor.Email && x.Id != id);
-                    if (emailKontrol != null)
+                    var emailKontrol = _kullanıcıRepository.GetAll().Any(u => u.Email == doktor.Email && u.Id != kullanıcı.Id);
+                    if (emailKontrol)
                     {
                         return ResponseGeneric<Doktor>.Error("Email adresi başkası tarafından alınmış.");
                     }
-                    kayıtlıDoktor.Email = doktor.Email;
+                    kullanıcı.Email = doktor.Email;
                 }
 
-                if (doktor.TelefonNumarası != null && doktor.TelefonNumarası != kayıtlıDoktor.TelefonNumarası)
+                if (!string.IsNullOrEmpty(doktor.TelefonNumarası) && doktor.TelefonNumarası != kullanıcı.TelefonNumarası)
                 {
-                    var telKontrol = _doktorRepository.GetAll().FirstOrDefault(x => x.TelefonNumarası == doktor.TelefonNumarası && x.Id != id);
-                    if (telKontrol != null)
+                    var telKontrol = _kullanıcıRepository.GetAll().Any(u => u.TelefonNumarası == doktor.TelefonNumarası && u.Id != kullanıcı.Id);
+                    if (telKontrol)
                     {
                         return ResponseGeneric<Doktor>.Error("Telefon numarası başkası tarafından alınmış.");
                     }
-                    kayıtlıDoktor.TelefonNumarası = doktor.TelefonNumarası;
+                    kullanıcı.TelefonNumarası = doktor.TelefonNumarası;
                 }
+
+                _kullanıcıRepository.Update(kullanıcı);
+
+                if (!string.IsNullOrEmpty(doktor.DiplomaNo))
+                    kayıtlıDoktor.DiplomaNo = doktor.DiplomaNo;
+                
+                if (doktor.MezuniyetTarihi.HasValue)
+                    kayıtlıDoktor.MezuniyetTarihi = doktor.MezuniyetTarihi;
+                
+                if (!string.IsNullOrEmpty(doktor.Ünvan))
+                    kayıtlıDoktor.Ünvan = doktor.Ünvan;
+
                 _doktorRepository.Update(kayıtlıDoktor);
                 return ResponseGeneric<Doktor>.Success(kayıtlıDoktor, "Doktor bilgileri başarıyla güncellendi");
             }
             catch(Exception ex)
             {
-                return ResponseGeneric<Doktor>.Error("Bir hata oluştu." + ex.Message);
+                return ResponseGeneric<Doktor>.Error("Bir hata oluştu. " + ex.Message);
             }
         }
 

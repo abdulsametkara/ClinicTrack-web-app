@@ -1,5 +1,4 @@
-﻿using ClinickCore;
-using ClinickCore.DTOs;
+﻿using ClinickCore.DTOs;
 using ClinickCore.Entities;
 using ClinickService.Response;
 using System;
@@ -12,11 +11,14 @@ namespace ClinickService.Interfaces
 {
     public interface IKullanıcıService
     {
-        ResponseGeneric<Kullanıcı> KullanıcıEkle(KullanıcıOlusturDto kullanıcı);
+        ResponseGeneric<Kullanıcı> KullanıcıOlustur(KullanıcıOlusturDto dto);
+        ResponseGeneric<Kullanıcı> HastaKayıt(KullanıcıKayıtDto dto);
         ResponseGeneric<List<Kullanıcı>> TumKullanıcılarıGetir();
         ResponseGeneric<Kullanıcı> KullanıcıGetirById(int id);
-        ResponseGeneric<Kullanıcı> KullanıcıGuncelle(int id, KullanıcıGüncelleDto kullanıcı);
+        ResponseGeneric<Kullanıcı> KullanıcıGetirByEmail(string email);
+        ResponseGeneric<Kullanıcı> EmailGuncelle(int id, string yeniEmail);
         Responses KullanıcıSil(int id);
-
+        ResponseGeneric<string> Login(KullanıcıGirisDto dto);
+        Responses ParolaGuncelle(int kullanıcıId, string eskiParola, string yeniParola);
     }
 }

@@ -11,15 +11,20 @@ namespace ClinickCore.DTOs
         public string İsim { get; set; }
         public string Soyisim { get; set; }
         public string TCNo { get; set; }
-        public DateTime DoğumTarihi { get; set; }
-        public string Cinsiyet { get; set; }
+        public DateTime? DoğumTarihi { get; set; }
+        public string? Cinsiyet { get; set; }
         public string TelefonNumarası { get; set; }
         public string Email { get; set; }
+        public string? KanGrubu { get; set; }
+        public string? Adres { get; set; }
     }
 
     public class HastaGüncelleDto
     {
-        public string TelefonNumarası { get; set; }
-        public string Email { get; set; }
+        public string? TelefonNumarası { get; set; }
+        public string? Email { get; set; }
+        public string? Cinsiyet { get; set; }
+        public string? KanGrubu { get; set; }
+        public string? Adres { get; set; }
     }
 }
