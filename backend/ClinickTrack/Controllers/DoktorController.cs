@@ -3,6 +3,7 @@ using ClinickService.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ClinickTrackApi.Controllers
 {
@@ -101,7 +102,23 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
-
-
+        [Authorize(Roles = "Doktor")]
+        [HttpGet("profil")]
+        public IActionResult ProfilDoktor()
+        {
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                return Unauthorized("Kullanıcı bilgisi bulunamadı.");
+            }
+            
+            var sonuc = _doktorService.DoktorGetirByKullanıcıId(int.Parse(currentUserId));
+            if (!sonuc.IsSuccess)
+            {
+                return NotFound(sonuc);
+            }
+            return Ok(sonuc);
+        }
     }
 }

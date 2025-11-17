@@ -361,7 +361,8 @@ namespace ClinickService.Services
 
         private string HashPassword(string password)
         {
-            string secretKey = "??tRP_0HV]L-jKR";
+            string secretKey = _configuration["Security:PasswordHashSecretKey"];
+               
             using (var sha256 = SHA256.Create())
             {
                 var combinedPassword = password + secretKey;

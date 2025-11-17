@@ -5,6 +5,7 @@ using ClinickDataAccess.Repository;
 using ClinickService.Interfaces;
 using ClinickService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -44,7 +45,8 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 
-builder.Services.AddDbContext<DatabaseBaglanti>();
+builder.Services.AddDbContext<DatabaseBaglanti>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 //Servis implamantosyonları
 builder.Services.AddScoped<IGenericRepository<Doktor>, GenericRepository<Doktor>>();
@@ -57,6 +59,19 @@ builder.Services.AddScoped<IUzmanlıkService, UzmanlıkService>();
 builder.Services.AddScoped<IRandevuService, RandevuService>();
 builder.Services.AddScoped<IHastaService, HastaService>();
 builder.Services.AddScoped<IKullanıcıService, KullanıcıService>();
+
+//CORS Yapılandırması
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        var allowedOrigins = builder.Configuration.GetSection("CORS:AllowedOrigins").Get<string[]>();
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 //JWT Yapılandırması
 builder.Services.AddAuthentication(options =>
@@ -87,6 +102,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 

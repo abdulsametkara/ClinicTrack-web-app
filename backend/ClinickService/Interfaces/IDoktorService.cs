@@ -14,6 +14,7 @@ namespace ClinickService.Interfaces
         ResponseGeneric<Doktor> DoktorEkle(DoktorOlusturDto doktor);
         ResponseGeneric<List<Doktor>> TumDoktolarıGetir();
         ResponseGeneric<Doktor> DoktorGetirById(int id);
+        ResponseGeneric<Doktor> DoktorGetirByKullanıcıId(int kullanıcıId);
         ResponseGeneric<Doktor> DoktorGuncelle(int id, DoktorGüncelleDto doktor);
         Responses DoktorSil(int id);
         ResponseGeneric<List<Doktor>> DoktorGetirUzmanlığaGore(int uzmanlıkId);

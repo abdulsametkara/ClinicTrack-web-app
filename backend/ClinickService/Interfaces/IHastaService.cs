@@ -14,6 +14,7 @@ namespace ClinickService.Interfaces
         ResponseGeneric<Hasta> HastaEkle(HastaOlusturDto hasta);
         ResponseGeneric<List<Hasta>> TumHastalariGetir();
         ResponseGeneric<Hasta> HastaGetirById(int id);
+        ResponseGeneric<Hasta> HastaGetirByKullanıcıId(int kullanıcıId);
         ResponseGeneric<Hasta> HastaGuncelle(int id, HastaGüncelleDto hasta);
         Responses HastaSil(int id);
 
