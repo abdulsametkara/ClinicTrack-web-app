@@ -1,5 +1,4 @@
-﻿using ClinickCore;
-using ClinickCore.DTOs;
+﻿using ClinickCore.DTOs;
 using ClinickCore.Entities;
 using ClinickService.Response;
 using System;

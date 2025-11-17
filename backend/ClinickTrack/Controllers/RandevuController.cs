@@ -1,5 +1,6 @@
 ﻿using ClinickCore.DTOs;
 using ClinickService.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace ClinickTrackApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RandevuController : ControllerBase
     {
         private readonly IRandevuService _randevuService;
@@ -15,6 +17,7 @@ namespace ClinickTrackApi.Controllers
             _randevuService = randevuService;
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet("getAll")]
         public IActionResult TümRandevularıGetir()
         {
@@ -26,6 +29,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("delete/{id}")]
         public IActionResult RandevuSil(int id)
         {
@@ -37,6 +41,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize]
         [HttpPost("add")]
         public IActionResult RandevuEkle([FromBody] RandevuOlusturDto dto)
         {
@@ -48,6 +53,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize]
         [HttpPut("cancel/{id}")]
         public IActionResult RandevuIptal(int id)
         {
@@ -59,6 +65,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize]
         [HttpGet("getById/{id}")]
         public IActionResult RandevuGetirById(int id)
         {
@@ -70,6 +77,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize]
         [HttpGet("hasta/{hastaId}")]
         public IActionResult HastaRandevularınıGetir(int hastaId)
         {
@@ -81,6 +89,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize]
         [HttpGet("doktor/{doktorId}")]
         public IActionResult DoktorRandevularınıGetir(int doktorId)
         {
@@ -92,6 +101,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin,Doktor")]
         [HttpPut("updateStatus/{id}")]
         public IActionResult RandevuDurumGuncelle(int randevuId, [FromBody] string yeniDurum)
         {
@@ -103,6 +113,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Doktor")]
         [HttpPut("addNote/{id}")]
         public IActionResult DoktorNotEkle(int id, [FromBody] string not)
         {
@@ -114,6 +125,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize]
         [HttpGet("checkAvailability")]
         public IActionResult RandevuUygunMu(int doktorId, DateTime randevuTarihi)
         {
@@ -125,6 +137,7 @@ namespace ClinickTrackApi.Controllers
         }
 
 
+        [Authorize(Roles = "Admin")]
         [HttpPost("completePastAppointments")]
         public IActionResult GeçmişRandevularıTamamla()
         {

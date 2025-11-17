@@ -10,15 +10,44 @@ namespace ClinickCore.DTOs
     {
         public string İsim { get; set; }
         public string Soyisim { get; set; }
+        public string TCNo { get; set; }
         public string Email { get; set; }
         public string Parola { get; set; }
         public string Rol { get; set; }
+        public DateTime DoğumTarihi { get; set; }
+        public int? UzmanlıkId { get; set; }
+        public string TelefonNumarası { get; set; }
     }
+
+    public class KullanıcıGirisDto
+    {
+        public string Email { get; set; }
+        public string Parola { get; set; }
+    }
+
+    public class KullanıcıKayıtDto
+    {
+        public string İsim { get; set; }
+        public string Soyisim { get; set; }
+        public string TCNo { get; set; }
+        public string Email { get; set; }
+        public string Parola { get; set; }
+        public DateTime DoğumTarihi { get; set; }
+        public string Cinsiyet { get; set; }
+        public string TelefonNumarası { get; set; }
+
+    }
+
     public class KullanıcıGüncelleDto
     {
-        public int KullanıcıId { get; set; }
         public string Email { get; set; }
-        public string ParolaHash { get; set; }
+        public string Parola { get; set; }
+    }
+
+    public class ParolaGuncelleDto
+    {
+        public string EskiParola { get; set; }
+        public string YeniParola { get; set; }
     }
 
 }

@@ -1,5 +1,6 @@
 ﻿using ClinickCore.DTOs;
 using ClinickService.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace ClinickTrackApi.Controllers
 {
     [Route("api/Uzmanlik")]
     [ApiController]
+    [Authorize]
     public class UzmanlıkController : ControllerBase
     {
         private readonly IUzmanlıkService _uzmanlıkService;
@@ -15,6 +17,7 @@ namespace ClinickTrackApi.Controllers
             _uzmanlıkService = uzmanlıkService;
         }
 
+        [AllowAnonymous]
         [HttpGet("getAll")]
         public IActionResult TumUzmanlıklarıGetir()
         {
@@ -26,6 +29,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost("add")]
         public IActionResult UzmanlıkEkle([FromBody] string uzmanlıkAdı)
         {
@@ -37,6 +41,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [AllowAnonymous]
         [HttpGet("getById/{id}")]
         public IActionResult UzmanlıkGetirById(int id)
         {
@@ -48,6 +53,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPut("update/{id}")]
         public IActionResult UzmanlıkGuncelle(int id, [FromBody] string uzmanlikAdı)
         {
@@ -59,6 +65,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("delete/{id}")]
         public IActionResult UzmanlıkSil(int id)
         {

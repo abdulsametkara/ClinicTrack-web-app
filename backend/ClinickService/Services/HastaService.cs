@@ -1,5 +1,5 @@
-﻿using ClinickCore;
-using ClinickCore.DTOs;
+﻿using ClinickCore.DTOs;
+using ClinickCore.Entities;
 using ClinickDataAccess.Repository;
 using ClinickService.Interfaces;
 using ClinickService.Response;
@@ -14,9 +14,12 @@ namespace ClinickService.Services
     public class HastaService : IHastaService
     {
         private readonly IGenericRepository<Hasta> _hastaRepository;
-        public HastaService(IGenericRepository<Hasta> hastaRepository)
+        private readonly IGenericRepository<Kullanıcı> _kullanıcıRepository;
+        
+        public HastaService(IGenericRepository<Hasta> hastaRepository, IGenericRepository<Kullanıcı> kullanıcıRepository)
         {
             _hastaRepository = hastaRepository;
+            _kullanıcıRepository = kullanıcıRepository;
         }
         public ResponseGeneric<Hasta> HastaEkle(HastaOlusturDto hasta)
         {
@@ -27,35 +30,48 @@ namespace ClinickService.Services
                     return ResponseGeneric<Hasta>.Error("Hasta bilgileri boş olamaz.");
                 }
 
-                var tcKontrol = _hastaRepository.GetAll().FirstOrDefault(h => h.TCNo == hasta.TCNo);
-                if (tcKontrol != null)
+                var tcKontrol = _kullanıcıRepository.GetAll().Any(u => u.TCNo == hasta.TCNo);
+                if (tcKontrol)
                 {
-                    return ResponseGeneric<Hasta>.Error("Bu TC kimlik numarasına sahip bir hasta zaten mevcut.");
+                    return ResponseGeneric<Hasta>.Error("Bu TC kimlik numarasına sahip bir kullanıcı zaten mevcut.");
                 }
 
-                var emailKontrol = _hastaRepository.GetAll().FirstOrDefault(h => h.Email == hasta.Email);
-                if (emailKontrol != null)
+                var emailKontrol = _kullanıcıRepository.GetAll().Any(u => u.Email == hasta.Email);
+                if (emailKontrol)
                 {
-                    return ResponseGeneric<Hasta>.Error("Bu email adresine sahip bir hasta zaten mevcut.");
+                    return ResponseGeneric<Hasta>.Error("Bu email adresine sahip bir kullanıcı zaten mevcut.");
                 }
 
-                var yeniHasta = new Hasta
+                var yeniKullanıcı = new Kullanıcı
                 {
                     İsim = hasta.İsim,
                     Soyisim = hasta.Soyisim,
                     TCNo = hasta.TCNo,
-                    DoğumTarihi = hasta.DoğumTarihi,
-                    Cinsiyet = hasta.Cinsiyet,
-                    TelefonNumarası = hasta.TelefonNumarası,
                     Email = hasta.Email,
+                    Parola = "Sifre123",
+                    Rol = "Hasta",
+                    DoğumTarihi = hasta.DoğumTarihi,
+                    TelefonNumarası = hasta.TelefonNumarası,
+                    OluşturulmaTarihi = DateTime.Now,
+                    RecordDate = DateTime.Now
+                };
+                _kullanıcıRepository.Create(yeniKullanıcı);
+
+                var yeniHasta = new Hasta
+                {
+                    KullanıcıId = yeniKullanıcı.Id,
+                    Cinsiyet = hasta.Cinsiyet,
+                    KanGrubu = hasta.KanGrubu,
+                    Adres = hasta.Adres,
                     RecordDate = DateTime.Now
                 };
                 _hastaRepository.Create(yeniHasta);
+                
                 return ResponseGeneric<Hasta>.Success(yeniHasta, "Hasta başarıyla eklendi.");
             }
             catch(Exception ex)
             {
-                return ResponseGeneric<Hasta>.Error("Bir hata oluştu." + ex.Message);
+                return ResponseGeneric<Hasta>.Error("Bir hata oluştu. " + ex.Message);
             }
         }
 
@@ -127,32 +143,49 @@ namespace ClinickService.Services
                     return ResponseGeneric<Hasta>.Error("Belirtilen ID'ye sahip hasta bulunamadı.");
                 }
 
-                if (mevcutHasta.TelefonNumarası != hasta.TelefonNumarası)
+                var kullanıcı = _kullanıcıRepository.GetById(mevcutHasta.KullanıcıId);
+                if (kullanıcı == null)
                 {
-                    var telKontrol = _hastaRepository.GetAll().FirstOrDefault(h => h.TelefonNumarası == hasta.TelefonNumarası);
-                    if (telKontrol != null)
-                    {
-                        return ResponseGeneric<Hasta>.Error("Bu telefon numarasına sahip bir hasta zaten mevcut.");
-                    }
-                    mevcutHasta.TelefonNumarası = hasta.TelefonNumarası;
+                    return ResponseGeneric<Hasta>.Error("Hasta kullanıcı bilgisi bulunamadı.");
                 }
 
-                if (mevcutHasta.Email != hasta.Email)
+                if (!string.IsNullOrEmpty(hasta.TelefonNumarası) && kullanıcı.TelefonNumarası != hasta.TelefonNumarası)
                 {
-                    var emailKontrol = _hastaRepository.GetAll().FirstOrDefault(h => h.Email == hasta.Email);
-                    if (emailKontrol != null)
+                    var telKontrol = _kullanıcıRepository.GetAll().Any(u => u.TelefonNumarası == hasta.TelefonNumarası && u.Id != kullanıcı.Id);
+                    if (telKontrol)
                     {
-                        return ResponseGeneric<Hasta>.Error("Bu email adresine sahip bir hasta zaten mevcut.");
+                        return ResponseGeneric<Hasta>.Error("Bu telefon numarasına sahip bir kullanıcı zaten mevcut.");
                     }
-                    mevcutHasta.Email = hasta.Email;
+                    kullanıcı.TelefonNumarası = hasta.TelefonNumarası;
                 }
+
+                if (!string.IsNullOrEmpty(hasta.Email) && kullanıcı.Email != hasta.Email)
+                {
+                    var emailKontrol = _kullanıcıRepository.GetAll().Any(u => u.Email == hasta.Email && u.Id != kullanıcı.Id);
+                    if (emailKontrol)
+                    {
+                        return ResponseGeneric<Hasta>.Error("Bu email adresine sahip bir kullanıcı zaten mevcut.");
+                    }
+                    kullanıcı.Email = hasta.Email;
+                }
+
+                _kullanıcıRepository.Update(kullanıcı);
+
+                if (!string.IsNullOrEmpty(hasta.Cinsiyet))
+                    mevcutHasta.Cinsiyet = hasta.Cinsiyet;
+                
+                if (!string.IsNullOrEmpty(hasta.KanGrubu))
+                    mevcutHasta.KanGrubu = hasta.KanGrubu;
+                
+                if (!string.IsNullOrEmpty(hasta.Adres))
+                    mevcutHasta.Adres = hasta.Adres;
 
                 _hastaRepository.Update(mevcutHasta);
                 return ResponseGeneric<Hasta>.Success(mevcutHasta, "Hasta başarıyla güncellendi.");
             }
             catch(Exception ex)
             {
-                return ResponseGeneric<Hasta>.Error("Bir hata oluştu." + ex.Message);
+                return ResponseGeneric<Hasta>.Error("Bir hata oluştu. " + ex.Message);
             }
         }
     }

@@ -1,5 +1,6 @@
 ﻿using ClinickCore.DTOs;
 using ClinickService.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace ClinickTrackApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class DoktorController : ControllerBase
     {
         private readonly IDoktorService _doktorService;
@@ -15,6 +17,7 @@ namespace ClinickTrackApi.Controllers
             _doktorService = doktorService;
         }
 
+        [AllowAnonymous]
         [HttpGet("getAll")]
         public IActionResult TumDoktorlariGetir()
         {
@@ -26,6 +29,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [AllowAnonymous]
         [HttpGet("getById/{id}")]
         public IActionResult DoktorGetirById(int id)
         {
@@ -37,6 +41,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost("add")]
         public IActionResult DoktorEkle([FromBody] DoktorOlusturDto dto)
         {
@@ -48,6 +53,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPut("update/{id}")]
         public IActionResult DoktorGuncelle(int id, [FromBody] DoktorGüncelleDto dto)
         {
@@ -59,6 +65,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("delete/{id}")]
         public IActionResult DoktorSil(int id)
         {
@@ -70,6 +77,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [AllowAnonymous]
         [HttpGet("uzmanlik/{uzmanlikId}")]
         public IActionResult DoktorGetirUzmanlığaGore(int uzmanlikId)
         {
@@ -81,6 +89,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin,Doktor")]
         [HttpGet("{doktorId}/randevular")]
         public IActionResult DoktorRandevularınıGetir(int doktorId)
         {
@@ -91,6 +100,8 @@ namespace ClinickTrackApi.Controllers
             }
             return Ok(sonuc);
         }
+
+
 
     }
 }

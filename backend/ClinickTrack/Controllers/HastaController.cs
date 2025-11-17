@@ -1,5 +1,6 @@
 ﻿using ClinickCore.DTOs;
 using ClinickService.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Runtime.InteropServices;
@@ -8,6 +9,7 @@ namespace ClinickTrackApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class HastaController : ControllerBase
     {
         private readonly IHastaService _hastaService;
@@ -16,6 +18,7 @@ namespace ClinickTrackApi.Controllers
             _hastaService = hastaService;
         }
 
+        [Authorize(Roles = "Admin,Doktor")]
         [HttpGet("getAll")]
         public IActionResult TumHastalariGetir()
         {
@@ -27,6 +30,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin,Doktor")]
         [HttpGet("getById/{id}")]
         public IActionResult HastaGetirById(int id)
         {
@@ -38,6 +42,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost("add")]
         public IActionResult HastaEkle([FromBody] HastaOlusturDto dto)
         {
@@ -49,6 +54,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPut("update/{id}")]
         public IActionResult HastaGüncelle(int id, [FromBody] HastaGüncelleDto dto)
         {
@@ -60,6 +66,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("delete/{id}")]
         public IActionResult HastaSil(int id)
         {
