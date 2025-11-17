@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Runtime.InteropServices;
-using System.Security.Claims;
 
 namespace ClinickTrackApi.Controllers
 {
@@ -72,25 +71,6 @@ namespace ClinickTrackApi.Controllers
         public IActionResult HastaSil(int id)
         {
             var sonuc = _hastaService.HastaSil(id);
-            if (!sonuc.IsSuccess)
-            {
-                return NotFound(sonuc);
-            }
-            return Ok(sonuc);
-        }
-
-        [Authorize(Roles = "Hasta")]
-        [HttpGet("profil")]
-        public IActionResult ProfilHasta()
-        {
-            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            
-            if (string.IsNullOrEmpty(currentUserId))
-            {
-                return Unauthorized("Kullanıcı bilgisi bulunamadı.");
-            }
-            
-            var sonuc = _hastaService.HastaGetirByKullanıcıId(int.Parse(currentUserId));
             if (!sonuc.IsSuccess)
             {
                 return NotFound(sonuc);

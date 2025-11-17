@@ -112,23 +112,6 @@ namespace ClinickService.Services
             }
         }
 
-        public ResponseGeneric<Doktor> DoktorGetirByKullanıcıId(int kullanıcıId)
-        {
-            try
-            {
-                var doktor = _doktorRepository.GetAll().FirstOrDefault(d => d.KullanıcıId == kullanıcıId);
-                if (doktor == null)
-                {
-                    return ResponseGeneric<Doktor>.Error("Kullanıcıya ait doktor kaydı bulunamadı.");
-                }
-                return ResponseGeneric<Doktor>.Success(doktor, "Doktor bilgileri başarıyla getirildi.");
-            }
-            catch (Exception ex)
-            {
-                return ResponseGeneric<Doktor>.Error("Bir hata oluştu: " + ex.Message);
-            }
-        }
-
 
         public ResponseGeneric<List<Doktor>> DoktorGetirUzmanlığaGore(int uzmanlıkId)
         {

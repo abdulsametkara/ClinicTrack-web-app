@@ -109,23 +109,6 @@ namespace ClinickService.Services
             }
         }
 
-        public ResponseGeneric<Hasta> HastaGetirByKullanıcıId(int kullanıcıId)
-        {
-            try
-            {
-                var hasta = _hastaRepository.GetAll().FirstOrDefault(h => h.KullanıcıId == kullanıcıId);
-                if (hasta == null)
-                {
-                    return ResponseGeneric<Hasta>.Error("Kullanıcıya ait hasta kaydı bulunamadı.");
-                }
-                return ResponseGeneric<Hasta>.Success(hasta, "Hasta bilgileri başarıyla getirildi.");
-            }
-            catch (Exception ex)
-            {
-                return ResponseGeneric<Hasta>.Error("Bir hata oluştu: " + ex.Message);
-            }
-        }
-
         public Responses HastaSil(int id)
         {
             try
