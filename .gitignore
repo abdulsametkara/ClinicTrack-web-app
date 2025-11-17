@@ -415,3 +415,6 @@ appsettings.Staging.json
 .env
 .env.local
 .env.*.local
+
+appsettings.Production.json
+appsettings.Development.json
