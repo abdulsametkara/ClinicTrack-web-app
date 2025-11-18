@@ -109,3 +109,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Integration test için gerekli
+public partial class Program { }
