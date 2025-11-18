@@ -508,3 +508,5 @@ public void Test1()
 
 **Başarılar! Test yazmaya başlayın ve coverage'ı %90'a çıkaralım! 🚀**
 
+
+

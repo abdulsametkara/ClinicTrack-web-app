@@ -50,4 +50,15 @@ namespace ClinickCore.DTOs
         public string YeniParola { get; set; }
     }
 
+    public class LoginResponseDto
+    {
+        public string Token { get; set; }
+        public DateTime Expiration { get; set; }
+        public int KullanıcıId { get; set; }
+        public string Email { get; set; }
+        public string İsim { get; set; }
+        public string Soyisim { get; set; }
+        public string Rol { get; set; }
+    }
+
 }

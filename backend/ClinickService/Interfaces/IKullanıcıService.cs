@@ -18,7 +18,7 @@ namespace ClinickService.Interfaces
         ResponseGeneric<Kullanıcı> KullanıcıGetirByEmail(string email);
         ResponseGeneric<Kullanıcı> EmailGuncelle(int id, string yeniEmail);
         Responses KullanıcıSil(int id);
-        ResponseGeneric<string> Login(KullanıcıGirisDto dto);
+        ResponseGeneric<LoginResponseDto> Login(KullanıcıGirisDto dto);
         Responses ParolaGuncelle(int kullanıcıId, string eskiParola, string yeniParola);
     }
 }
