@@ -285,11 +285,6 @@ namespace ClinickService.Services
                     return ResponseGeneric<Kullanıcı>.Error("TC No 11 haneli sayısal değer olmalıdır.");
                 }
 
-                if (string.IsNullOrEmpty(dto.TelefonNumarası))
-                {
-                    return ResponseGeneric<Kullanıcı>.Error("Telefon numarası boş olamaz.");
-                }
-
                 var emailKontrol = _kullanıcıRepository.GetAll().Any(x => x.Email == dto.Email);
                 if (emailKontrol)
                 {
@@ -326,36 +321,45 @@ namespace ClinickService.Services
                 return ResponseGeneric<Kullanıcı>.Error("Bir hata oluştu. " + ex.Message);
             }
         }
-        public ResponseGeneric<string> Login(KullanıcıGirisDto dto)
+        public ResponseGeneric<LoginResponseDto> Login(KullanıcıGirisDto dto)
         {
             try
             {
                 if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Parola))
                 {
-                    return ResponseGeneric<string>.Error("Email ve parola boş olamaz.");
+                    return ResponseGeneric<LoginResponseDto>.Error("Email ve parola boş olamaz.");
                 }
 
                 var kullanıcı = _kullanıcıRepository.GetAll().FirstOrDefault(u => u.Email == dto.Email);
                 if (kullanıcı == null)
                 {
-                    return ResponseGeneric<string>.Error("Email veya parola hatalı.");
+                    return ResponseGeneric<LoginResponseDto>.Error("Email veya parola hatalı.");
                 }
 
                 if (!VerifyPassword(dto.Parola, kullanıcı.Parola))
                 {
-                    return ResponseGeneric<string>.Error("Email veya parola hatalı.");
+                    return ResponseGeneric<LoginResponseDto>.Error("Email veya parola hatalı.");
                 }
 
                 var generatedToken = GenerateJwtToken(kullanıcı);
 
-                kullanıcı.Parola = null;
+                var loginResponse = new LoginResponseDto
+                {
+                    Token = generatedToken,
+                    Expiration = DateTime.Now.AddMinutes(Convert.ToDouble(_configuration["JwtSettings:ExpiryInMinutes"])),
+                    KullanıcıId = kullanıcı.Id,
+                    Email = kullanıcı.Email,
+                    İsim = kullanıcı.İsim,
+                    Soyisim = kullanıcı.Soyisim,
+                    Rol = kullanıcı.Rol
+                };
 
-                return ResponseGeneric<string>.Success(generatedToken, "Giriş işlemi başarılıyla tamamlandı.");
+                return ResponseGeneric<LoginResponseDto>.Success(loginResponse, "Giriş işlemi başarılıyla tamamlandı.");
             }
 
             catch (Exception ex)
             {
-                return ResponseGeneric<string>.Error("Bir hata oluştu. " + ex.Message);
+                return ResponseGeneric<LoginResponseDto>.Error("Bir hata oluştu. " + ex.Message);
             }
         }
 
