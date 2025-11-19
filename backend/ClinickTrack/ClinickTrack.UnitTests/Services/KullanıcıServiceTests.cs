@@ -13,12 +13,14 @@ namespace ClinickTrack.Tests.Services
     public class KullanıcıServiceTests
     {
         private readonly Mock<IGenericRepository<Kullanıcı>> _mockRepo;
+        private readonly Mock<IGenericRepository<Hasta>> _mockHastaRepo;
         private readonly Mock<IConfiguration> _mockConfig;
         private readonly KullanıcıService _service;
 
         public KullanıcıServiceTests()
         {
             _mockRepo = new Mock<IGenericRepository<Kullanıcı>>();
+            _mockHastaRepo = new Mock<IGenericRepository<Hasta>>();
             _mockConfig = new Mock<IConfiguration>();
             
             // appsettings değerlerini mock'la
@@ -33,7 +35,7 @@ namespace ClinickTrack.Tests.Services
             _mockConfig.Setup(x => x["JwtSettings:ExpiryInMinutes"])
                 .Returns("60");
             
-            _service = new KullanıcıService(_mockRepo.Object, _mockConfig.Object);
+            _service = new KullanıcıService(_mockRepo.Object, _mockHastaRepo.Object, _mockConfig.Object);
         }
 
         [Fact]
