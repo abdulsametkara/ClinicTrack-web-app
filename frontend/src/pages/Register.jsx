@@ -1,27 +1,24 @@
-// Kayıt sayfası - Yeni hasta kaydı
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import { register, login } from '../api';
-import { UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Mail, Lock, Phone, Calendar, Activity, ArrowRight, CheckCircle } from 'lucide-react';
 
 function Register() {
-  // Form verileri
   const [formData, setFormData] = useState({
     isim: '',
     soyisim: '',
-    tcNo: '',
     email: '',
     parola: '',
-    parolaOnay: '',
+    tcNo: '',
     telefonNumarası: '',
     doğumTarihi: '',
   });
 
+  const [rol, setRol] = useState('Hasta'); // Varsayılan rol
   const [hata, setHata] = useState('');
   const [yukleniyor, setYukleniyor] = useState(false);
   const navigate = useNavigate();
 
-  // Input değiştiğinde
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -29,27 +26,13 @@ function Register() {
     });
   };
 
-  // Kayıt butonuna tıklandığında
   const handleRegister = async (e) => {
     e.preventDefault();
     setHata('');
-
-    // Parola kontrolü
-    if (formData.parola !== formData.parolaOnay) {
-      setHata('Parolalar eşleşmiyor!');
-      return;
-    }
-
-    // TC No kontrolü (11 haneli olmalı)
-    if (formData.tcNo.length !== 11) {
-      setHata('TC Kimlik No 11 haneli olmalıdır!');
-      return;
-    }
-
     setYukleniyor(true);
 
     try {
-      // API'ye kayıt isteği gönder (Backend büyük harfle bekliyor)
+      // Kayıt isteği gönder
       const response = await register({
         İsim: formData.isim,
         Soyisim: formData.soyisim,
@@ -58,216 +41,293 @@ function Register() {
         Parola: formData.parola,
         TelefonNumarası: formData.telefonNumarası || '',
         DoğumTarihi: formData.doğumTarihi || null,
-        Cinsiyet: '',
+        Rol: rol, // Seçilen rolü gönder (Backend destekliyorsa)
+        Cinsiyet: '', // Opsiyonel
       });
 
-      // Başarılı ise otomatik giriş yap
+      // Backend camelCase döndürüyor
       if (response.isSuccess) {
-        // Kayıt başarılı, şimdi otomatik giriş yap
+        // Kayıt başarılı, otomatik giriş yap
         try {
           const loginResponse = await login(formData.email, formData.parola);
           
-          console.log('Auto Login Response:', loginResponse); // Debug
-          
           if (loginResponse.isSuccess) {
-            // Token'ı sakla (camelCase veya PascalCase olabilir)
-            const token = loginResponse.data.token || loginResponse.data.Token;
-            const isim = loginResponse.data.isim || loginResponse.data.İsim;
-            const rol = loginResponse.data.rol || loginResponse.data.Rol;
+            const token = loginResponse.data.token;
+            const isim = loginResponse.data.isim;
+            const userRol = loginResponse.data.rol;
 
             localStorage.setItem('token', token);
             localStorage.setItem('kullaniciAd', isim);
-            localStorage.setItem('kullaniciRol', rol);
+            localStorage.setItem('kullaniciRol', userRol);
             
-            // Dashboard'a yönlendir
-            alert('Kayıt başarılı! Hoş geldiniz!');
-            navigate('/dashboard');
+            // Rolüne göre yönlendir
+            if (userRol === 'Admin') navigate('/admin');
+            else if (userRol === 'Doktor') navigate('/doktor');
+            else if (userRol === 'Hasta') navigate('/hasta');
+            else navigate('/');
           } else {
-            // Kayıt başarılı ama login olmadı
-            alert('Kayıt başarılı! Lütfen giriş yapın.');
             navigate('/login');
           }
         } catch (loginError) {
-          // Login hatası
-          alert('Kayıt başarılı! Lütfen giriş yapın.');
           navigate('/login');
         }
       } else {
-        setHata(response.message || 'Kayıt başarısız!');
+        setHata(response.message || 'Kayıt işlemi başarısız!');
       }
     } catch (error) {
-      console.error('Register hatası:', error);
-      setHata(error.response?.data?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
+      console.error('Kayıt hatası:', error);
+      setHata('Sunucuya bağlanılamadı.');
     } finally {
       setYukleniyor(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
-        {/* Başlık */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mb-4">
-            <UserPlus className="w-8 h-8 text-white" />
+    <div className="min-h-screen flex bg-gray-50">
+      {/* SOL TARAF - Görsel Alan */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 relative overflow-hidden text-white flex-col justify-between p-12">
+        <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-5 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full translate-x-1/3 translate-y-1/3"></div>
+        
+        <div className="flex items-center gap-3 z-10">
+          <div className="bg-white p-2 rounded-lg">
+            <Activity className="w-6 h-6 text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Hasta Kaydı</h1>
-          <p className="text-gray-600 mt-2">Bilgilerinizi girerek kayıt olun</p>
+          <span className="text-2xl font-bold tracking-wide">ClinicTrack</span>
         </div>
 
-        {/* Hata mesajı */}
-        {hata && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {hata}
-          </div>
-        )}
-
-        {/* Kayıt formu */}
-        <form onSubmit={handleRegister}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* İsim */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                İsim *
-              </label>
-              <input
-                type="text"
-                name="isim"
-                value={formData.isim}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                required
-              />
-            </div>
-
-            {/* Soyisim */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Soyisim *
-              </label>
-              <input
-                type="text"
-                name="soyisim"
-                value={formData.soyisim}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                required
-              />
-            </div>
-
-            {/* TC No */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                TC Kimlik No *
-              </label>
-              <input
-                type="text"
-                name="tcNo"
-                value={formData.tcNo}
-                onChange={handleChange}
-                maxLength="11"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                placeholder="12345678901"
-                required
-              />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Email *
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                placeholder="ornek@email.com"
-                required
-              />
-            </div>
-
-            {/* Telefon */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Telefon
-              </label>
-              <input
-                type="tel"
-                name="telefonNumarası"
-                value={formData.telefonNumarası}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                placeholder="05XX XXX XX XX"
-              />
-            </div>
-
-            {/* Doğum Tarihi */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Doğum Tarihi
-              </label>
-              <input
-                type="date"
-                name="doğumTarihi"
-                value={formData.doğumTarihi}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-              />
-            </div>
-
-            {/* Parola */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Parola *
-              </label>
-              <input
-                type="password"
-                name="parola"
-                value={formData.parola}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            {/* Parola Onay */}
-            <div>
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Parola Onay *
-              </label>
-              <input
-                type="password"
-                name="parolaOnay"
-                value={formData.parolaOnay}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Kayıt butonu */}
-          <button
-            type="submit"
-            disabled={yukleniyor}
-            className="w-full mt-6 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition duration-200 disabled:bg-gray-400"
-          >
-            {yukleniyor ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
-          </button>
-        </form>
-
-        {/* Login linki */}
-        <div className="text-center mt-6">
-          <p className="text-gray-600">
-            Zaten hesabınız var mı?{' '}
-            <Link to="/login" className="text-green-500 hover:text-green-700 font-semibold">
-              Giriş Yap
-            </Link>
+        <div className="z-10 max-w-lg">
+          <h1 className="text-5xl font-bold mb-6 leading-tight">
+            Aramıza <br/>
+            <span className="text-blue-200">Katılın</span>
+          </h1>
+          <p className="text-blue-100 text-lg mb-8 leading-relaxed">
+            Binlerce hasta ve doktorun buluştuğu güvenilir platformda yerinizi alın.
+            Hızlı, kolay ve güvenli sağlık hizmeti.
           </p>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500 p-2 rounded-full bg-opacity-30">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <span>7/24 Online Randevu</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500 p-2 rounded-full bg-opacity-30">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <span>Uzman Doktor Ağı</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500 p-2 rounded-full bg-opacity-30">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <span>Geçmiş Sağlık Kayıtları</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="z-10 text-blue-200 text-sm">
+          © 2025 ClinicTrack. Tüm hakları saklıdır.
+        </div>
+      </div>
+
+      {/* SAĞ TARAF - Kayıt Formu */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-lg bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">Hesap Oluşturun</h2>
+            <p className="text-gray-500">Birkaç adımda üyeliğinizi tamamlayın</p>
+          </div>
+
+          {hata && (
+            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r text-red-700 text-sm">
+              {hata}
+            </div>
+          )}
+
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ad</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    name="isim"
+                    type="text"
+                    className="block w-full pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition"
+                    placeholder="Adınız"
+                    required
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Soyad</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    name="soyisim"
+                    type="text"
+                    className="block w-full pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition"
+                    placeholder="Soyadınız"
+                    required
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">TC Kimlik No</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Activity className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  name="tcNo"
+                  type="text"
+                  maxLength="11"
+                  className="block w-full pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition"
+                  placeholder="11 Haneli TC Kimlik No"
+                  required
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  name="email"
+                  type="email"
+                  className="block w-full pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition"
+                  placeholder="ornek@email.com"
+                  required
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Phone className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    name="telefonNumarası"
+                    type="tel"
+                    className="block w-full pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition"
+                    placeholder="5XX..."
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Doğum Tarihi</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Calendar className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    name="doğumTarihi"
+                    type="date"
+                    className="block w-full pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition"
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Parola</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  name="parola"
+                  type="password"
+                  className="block w-full pl-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition"
+                  placeholder="••••••••"
+                  required
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            {/* Rol Seçimi */}
+            <div className="flex gap-4 py-2">
+              <label className={`flex-1 cursor-pointer border rounded-xl p-3 flex items-center justify-center gap-2 transition ${rol === 'Hasta' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300'}`}>
+                <input
+                  type="radio"
+                  name="rol"
+                  value="Hasta"
+                  checked={rol === 'Hasta'}
+                  onChange={(e) => setRol(e.target.value)}
+                  className="hidden"
+                />
+                <User className="w-5 h-5" />
+                <span className="font-medium">Hasta</span>
+              </label>
+              
+              <label className={`flex-1 cursor-pointer border rounded-xl p-3 flex items-center justify-center gap-2 transition ${rol === 'Doktor' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300'}`}>
+                <input
+                  type="radio"
+                  name="rol"
+                  value="Doktor"
+                  checked={rol === 'Doktor'}
+                  onChange={(e) => setRol(e.target.value)}
+                  className="hidden"
+                />
+                <Activity className="w-5 h-5" />
+                <span className="font-medium">Doktor</span>
+              </label>
+            </div>
+
+            <div className="flex items-start gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="terms"
+                className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                required
+              />
+              <label htmlFor="terms" className="text-sm text-gray-500">
+                <a href="#" className="text-blue-600 hover:underline">Kullanım şartlarını</a> ve <a href="#" className="text-blue-600 hover:underline">gizlilik politikasını</a> kabul ediyorum.
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={yukleniyor}
+              className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all mt-6"
+            >
+              {yukleniyor ? 'Kayıt Yapılıyor...' : 'Kayıt Ol'}
+              {!yukleniyor && <ArrowRight className="w-4 h-4" />}
+            </button>
+
+            <div className="text-center mt-4">
+              <span className="text-sm text-gray-500">Zaten hesabınız var mı? </span>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="text-sm font-medium text-blue-600 hover:text-blue-500"
+              >
+                Giriş Yapın
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -275,4 +335,3 @@ function Register() {
 }
 
 export default Register;
-

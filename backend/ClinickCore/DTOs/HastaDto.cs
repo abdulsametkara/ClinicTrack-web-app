@@ -8,23 +8,20 @@ namespace ClinickCore.DTOs
 {
     public class HastaOlusturDto
     {
-        public string İsim { get; set; }
-        public string Soyisim { get; set; }
-        public string TCNo { get; set; }
-        public DateTime? DoğumTarihi { get; set; }
+        public int KullanıcıId { get; set; }
         public string? Cinsiyet { get; set; }
-        public string TelefonNumarası { get; set; }
-        public string Email { get; set; }
         public string? KanGrubu { get; set; }
         public string? Adres { get; set; }
+        public string? AcilDurumKişisi { get; set; }
+        public string? AcilDurumTelefon { get; set; }
     }
 
     public class HastaGüncelleDto
     {
-        public string? TelefonNumarası { get; set; }
-        public string? Email { get; set; }
         public string? Cinsiyet { get; set; }
         public string? KanGrubu { get; set; }
         public string? Adres { get; set; }
+        public string? AcilDurumKişisi { get; set; }
+        public string? AcilDurumTelefon { get; set; }
     }
 }

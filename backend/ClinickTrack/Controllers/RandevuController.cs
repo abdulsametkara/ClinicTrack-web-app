@@ -103,9 +103,9 @@ namespace ClinickTrackApi.Controllers
 
         [Authorize(Roles = "Admin,Doktor")]
         [HttpPut("updateStatus/{id}")]
-        public IActionResult RandevuDurumGuncelle(int randevuId, [FromBody] string yeniDurum)
+        public IActionResult RandevuDurumGuncelle(int id, [FromBody] string yeniDurum)
         {
-            var sonuc = _randevuService.RandevuDurumGuncelle(randevuId, yeniDurum);
+            var sonuc = _randevuService.RandevuDurumGuncelle(id, yeniDurum);
             if (!sonuc.IsSuccess)
             {
                 return BadRequest(sonuc);

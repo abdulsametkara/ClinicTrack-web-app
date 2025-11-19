@@ -12,6 +12,7 @@ namespace ClinickService.Interfaces
     public interface IKullanıcıService
     {
         ResponseGeneric<Kullanıcı> KullanıcıOlustur(KullanıcıOlusturDto dto);
+        ResponseGeneric<Kullanıcı> KullanıcıGuncelle(int id, KullanıcıOlusturDto dto);
         ResponseGeneric<Kullanıcı> HastaKayıt(KullanıcıKayıtDto dto);
         ResponseGeneric<List<Kullanıcı>> TumKullanıcılarıGetir();
         ResponseGeneric<Kullanıcı> KullanıcıGetirById(int id);

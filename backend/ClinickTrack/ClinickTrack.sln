@@ -13,8 +13,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClinickCore", "..\ClinickCo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClinickTrack.UnitTests", "ClinickTrack.UnitTests\ClinickTrack.UnitTests.csproj", "{FD6AC6E7-77B7-495F-B642-922AD1B6670E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClinickTrack.IntegrationTests", "ClinickTrack.IntegrationTests\ClinickTrack.IntegrationTests.csproj", "{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -85,18 +83,6 @@ Global
 		{FD6AC6E7-77B7-495F-B642-922AD1B6670E}.Release|x64.Build.0 = Release|Any CPU
 		{FD6AC6E7-77B7-495F-B642-922AD1B6670E}.Release|x86.ActiveCfg = Release|Any CPU
 		{FD6AC6E7-77B7-495F-B642-922AD1B6670E}.Release|x86.Build.0 = Release|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Debug|x64.Build.0 = Debug|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Debug|x86.Build.0 = Debug|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Release|x64.ActiveCfg = Release|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Release|x64.Build.0 = Release|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Release|x86.ActiveCfg = Release|Any CPU
-		{DEB3F67C-FB26-4E9A-B21F-5FFFDF9BC9BB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

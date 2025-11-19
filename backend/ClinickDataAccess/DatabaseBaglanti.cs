@@ -51,6 +51,15 @@ namespace ClinickDataAccess
                 Rol = "Admin",
                 OluşturulmaTarihi = new DateTime(2024, 1, 1)
             });
+
+            // Uzmanlık Alanları (Seed Data)
+            modelBuilder.Entity<Uzmanlık>().HasData(
+                new Uzmanlık { Id = 1, UzmanlıkAdı = "KBB", RecordDate = DateTime.Now },
+                new Uzmanlık { Id = 2, UzmanlıkAdı = "Kardiyoloji", RecordDate = DateTime.Now },
+                new Uzmanlık { Id = 3, UzmanlıkAdı = "Ortopedi", RecordDate = DateTime.Now },
+                new Uzmanlık { Id = 4, UzmanlıkAdı = "Pediatri", RecordDate = DateTime.Now },
+                new Uzmanlık { Id = 5, UzmanlıkAdı = "Dermatoloji", RecordDate = DateTime.Now }
+            );
         }
     }
 
