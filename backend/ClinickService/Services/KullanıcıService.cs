@@ -21,10 +21,16 @@ namespace ClinickService.Services
     public class KullanıcıService : IKullanıcıService
     {
         private readonly IGenericRepository<Kullanıcı> _kullanıcıRepository;
+        private readonly IGenericRepository<Hasta> _hastaRepository;
         private readonly IConfiguration _configuration;
-        public KullanıcıService(IGenericRepository<Kullanıcı> kullanıcıRepository, IConfiguration configuration)
+        
+        public KullanıcıService(
+            IGenericRepository<Kullanıcı> kullanıcıRepository, 
+            IGenericRepository<Hasta> hastaRepository,
+            IConfiguration configuration)
         {
             _kullanıcıRepository = kullanıcıRepository;
+            _hastaRepository = hastaRepository;
             _configuration = configuration;
         }
 
@@ -100,6 +106,85 @@ namespace ClinickService.Services
                 yeniKullanıcı.Parola = null;
 
                 return ResponseGeneric<Kullanıcı>.Success(yeniKullanıcı, "Kullanıcı başarıyla oluşturuldu.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseGeneric<Kullanıcı>.Error("Bir hata oluştu. " + ex.Message);
+            }
+        }
+
+        public ResponseGeneric<Kullanıcı> KullanıcıGuncelle(int id, KullanıcıOlusturDto dto)
+        {
+            try
+            {
+                var kullanıcı = _kullanıcıRepository.GetById(id);
+                if (kullanıcı == null)
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Kullanıcı bulunamadı.");
+                }
+
+                // Validasyonlar
+                if (string.IsNullOrEmpty(dto.İsim) || string.IsNullOrEmpty(dto.Soyisim))
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("İsim ve soyisim boş olamaz.");
+                }
+
+                if (string.IsNullOrEmpty(dto.Rol))
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Rol bilgisi boş olamaz.");
+                }
+
+                var izinliRoller = new[] { "Admin", "Doktor", "Hasta" };
+                if (!izinliRoller.Contains(dto.Rol))
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Geçersiz rol. İzin verilen roller: Admin, Doktor, Hasta");
+                }
+
+                if (string.IsNullOrEmpty(dto.TCNo))
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("TC No boş olamaz.");
+                }
+
+                if (dto.TCNo.Length != 11 || !dto.TCNo.All(char.IsDigit))
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("TC No 11 haneli sayısal değer olmalıdır.");
+                }
+
+                // Email kontrolü (kendi emaili hariç)
+                var emailKontrol = _kullanıcıRepository.GetAll().Any(x => x.Email == dto.Email && x.Id != id);
+                if (emailKontrol)
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Bu email adresi başka bir kullanıcı tarafından kullanılıyor.");
+                }
+
+                // TC kontrolü (kendi TC'si hariç)
+                var tcKontrol = _kullanıcıRepository.GetAll().Any(x => x.TCNo == dto.TCNo && x.Id != id);
+                if (tcKontrol)
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Bu TC No başka bir kullanıcı tarafından kullanılıyor.");
+                }
+
+                // Güncelleme
+                kullanıcı.İsim = dto.İsim;
+                kullanıcı.Soyisim = dto.Soyisim;
+                kullanıcı.TCNo = dto.TCNo;
+                kullanıcı.Email = dto.Email;
+                kullanıcı.Rol = dto.Rol;
+                kullanıcı.DoğumTarihi = dto.DoğumTarihi;
+                kullanıcı.TelefonNumarası = dto.TelefonNumarası;
+                kullanıcı.UzmanlıkId = dto.UzmanlıkId;
+
+                // Şifre sadece dolu ise güncellenir
+                if (!string.IsNullOrEmpty(dto.Parola))
+                {
+                    kullanıcı.Parola = HashPassword(dto.Parola);
+                }
+
+                _kullanıcıRepository.Update(kullanıcı);
+
+                kullanıcı.Parola = null;
+
+                return ResponseGeneric<Kullanıcı>.Success(kullanıcı, "Kullanıcı başarıyla güncellendi.");
             }
             catch (Exception ex)
             {
@@ -297,7 +382,7 @@ namespace ClinickService.Services
                     return ResponseGeneric<Kullanıcı>.Error("Bu TC No zaten kullanılıyor.");
                 }
 
-                var yeniHasta = new Kullanıcı
+                var yeniKullanici = new Kullanıcı
                 {
                     İsim = dto.İsim,
                     Soyisim = dto.Soyisim,
@@ -310,11 +395,20 @@ namespace ClinickService.Services
                     OluşturulmaTarihi = DateTime.Now
                 };
 
-                _kullanıcıRepository.Create(yeniHasta);
+                _kullanıcıRepository.Create(yeniKullanici);
 
-                yeniHasta.Parola = null;
+                // Hasta kaydını da oluştur (Kullanıcı Id'si ile ilişkilendir)
+                var yeniHasta = new Hasta
+                {
+                    KullanıcıId = yeniKullanici.Id,
+                    Cinsiyet = dto.Cinsiyet ?? "",
+                    RecordDate = DateTime.Now
+                };
+                _hastaRepository.Create(yeniHasta);
 
-                return ResponseGeneric<Kullanıcı>.Success(yeniHasta, "Kayıt başarıyla tamamlandı.");
+                yeniKullanici.Parola = null;
+
+                return ResponseGeneric<Kullanıcı>.Success(yeniKullanici, "Kayıt başarıyla tamamlandı.");
             }
             catch (Exception ex)
             {

@@ -97,6 +97,18 @@ namespace ClinickTrackApi.Controllers
         }
 
 
+        [Authorize(Roles = "Admin")]
+        [HttpPut("update/{id}")]
+        public IActionResult KullanıcıGuncelle(int id, [FromBody] KullanıcıOlusturDto dto)
+        {
+            var sonuc = _kullanıcıService.KullanıcıGuncelle(id, dto);
+            if (!sonuc.IsSuccess)
+            {
+                return BadRequest(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
         [Authorize]
         [HttpPut("updateEmail/{id}")]
         public IActionResult EmailGuncelle(int id, [FromBody] string yeniEmail)

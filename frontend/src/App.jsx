@@ -2,7 +2,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import DoktorDashboard from './pages/DoktorDashboard';
+import HastaDashboard from './pages/HastaDashboard';
 
 function App() {
   // Token var mı kontrol et (giriş yapmış mı?)
@@ -10,21 +12,43 @@ function App() {
     return localStorage.getItem('token') !== null;
   };
 
-  // Giriş yapmış kullanıcıyı koruma (Dashboard'a erişim için)
-  const ProtectedRoute = ({ children }) => {
+  // Kullanıcı rolünü al
+  const getUserRole = () => {
+    return localStorage.getItem('kullaniciRol');
+  };
+
+  // Kullanıcıyı rolüne göre yönlendir
+  const getDashboardPath = () => {
+    const rol = getUserRole();
+    if (rol === 'Admin') return '/admin';
+    if (rol === 'Doktor') return '/doktor';
+    if (rol === 'Hasta') return '/hasta';
+    return '/login'; // Rol bulunamazsa login'e gönder
+  };
+
+  // Giriş yapmış kullanıcıyı koruma ve rol kontrolü
+  const ProtectedRoute = ({ children, allowedRole }) => {
     if (!isLoggedIn()) {
       return <Navigate to="/login" />;
     }
+
+    const userRole = getUserRole();
+    
+    // Eğer rol belirtilmişse ve kullanıcının rolü uyuşmuyorsa, doğru panele yönlendir
+    if (allowedRole && userRole !== allowedRole) {
+      return <Navigate to={getDashboardPath()} />;
+    }
+
     return children;
   };
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ana sayfa - eğer giriş yapmışsa dashboard'a yönlendir */}
+        {/* Ana sayfa - giriş yapmışsa rolüne göre dashboard'a yönlendir */}
         <Route 
           path="/" 
-          element={isLoggedIn() ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} 
+          element={isLoggedIn() ? <Navigate to={getDashboardPath()} /> : <Navigate to="/login" />} 
         />
         
         {/* Login sayfası */}
@@ -33,14 +57,40 @@ function App() {
         {/* Register sayfası */}
         <Route path="/register" element={<Register />} />
         
-        {/* Dashboard - sadece giriş yapmış kullanıcılar erişebilir */}
+        {/* Admin Panel - sadece Admin rolü erişebilir */}
         <Route 
-          path="/dashboard" 
+          path="/admin" 
           element={
-            <ProtectedRoute>
-              <Dashboard />
+            <ProtectedRoute allowedRole="Admin">
+              <AdminDashboard />
             </ProtectedRoute>
           } 
+        />
+
+        {/* Doktor Panel - sadece Doktor rolü erişebilir */}
+        <Route 
+          path="/doktor" 
+          element={
+            <ProtectedRoute allowedRole="Doktor">
+              <DoktorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Hasta Panel - sadece Hasta rolü erişebilir */}
+        <Route 
+          path="/hasta" 
+          element={
+            <ProtectedRoute allowedRole="Hasta">
+              <HastaDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Eski /dashboard route'unu yönlendir */}
+        <Route 
+          path="/dashboard" 
+          element={<Navigate to={getDashboardPath()} />} 
         />
       </Routes>
     </BrowserRouter>
