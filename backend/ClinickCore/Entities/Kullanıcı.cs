@@ -18,5 +18,6 @@ namespace ClinickCore.Entities
         public int? UzmanlıkId { get; set; }
         public string? TelefonNumarası { get; set; }
         public DateTime? OluşturulmaTarihi { get; set; }
+        public bool İlkGiris { get; set; } = true; // Varsayılan olarak true
     }
 }

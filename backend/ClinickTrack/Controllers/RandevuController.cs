@@ -149,6 +149,16 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
-
+        [Authorize]
+        [HttpGet("getAvailableSlots")]
+        public IActionResult GetMusaitRandevuSaatleri(int doktorId, DateTime tarih)
+        {
+            var sonuc = _randevuService.GetMusaitRandevuSaatleri(doktorId, tarih);
+            if (!sonuc.IsSuccess)
+            {
+                return BadRequest(sonuc);
+            }
+            return Ok(sonuc);
+        }
     }
 }

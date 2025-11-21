@@ -31,6 +31,17 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
+        [HttpPost("ilkParolaBelirle")]
+        public IActionResult İlkParolaBelirle([FromBody] İlkParolaBelirleDto dto)
+        {
+            var sonuc = _kullanıcıService.İlkParolaBelirle(dto);
+            if (!sonuc.IsSuccess)
+            {
+                return BadRequest(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
 
         [AllowAnonymous]
         [HttpPost("kayitOl")]
@@ -114,6 +125,18 @@ namespace ClinickTrackApi.Controllers
         public IActionResult EmailGuncelle(int id, [FromBody] string yeniEmail)
         {
             var sonuc = _kullanıcıService.EmailGuncelle(id, yeniEmail);
+            if (!sonuc.IsSuccess)
+            {
+                return BadRequest(sonuc);
+            }
+            return Ok(sonuc);
+        }
+
+        [Authorize(Roles = "Admin,Doktor,Hasta")]
+        [HttpPut("updatePhone/{id}")]
+        public IActionResult TelefonGuncelle(int id, [FromBody] string yeniTelefon)
+        {
+            var sonuc = _kullanıcıService.TelefonGuncelle(id, yeniTelefon);
             if (!sonuc.IsSuccess)
             {
                 return BadRequest(sonuc);

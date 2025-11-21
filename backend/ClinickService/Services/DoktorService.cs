@@ -77,8 +77,6 @@ namespace ClinickService.Services
                 {
                     KullanıcıId = yeniKullanıcı.Id,
                     UzmanlıkId = doktor.UzmanlıkId,
-                    DiplomaNo = doktor.DiplomaNo,
-                    MezuniyetTarihi = doktor.MezuniyetTarihi,
                     Ünvan = doktor.Ünvan,
                     RecordDate = DateTime.Now
                 };
@@ -207,12 +205,6 @@ namespace ClinickService.Services
                 }
 
                 _kullanıcıRepository.Update(kullanıcı);
-
-                if (!string.IsNullOrEmpty(doktor.DiplomaNo))
-                    kayıtlıDoktor.DiplomaNo = doktor.DiplomaNo;
-                
-                if (doktor.MezuniyetTarihi.HasValue)
-                    kayıtlıDoktor.MezuniyetTarihi = doktor.MezuniyetTarihi;
                 
                 if (!string.IsNullOrEmpty(doktor.Ünvan))
                     kayıtlıDoktor.Ünvan = doktor.Ünvan;
@@ -274,12 +266,32 @@ namespace ClinickService.Services
         {
             try
             {
-                var doktor = _doktorRepository.GetAll().ToList();
-                if (doktor.Count == 0)
+                var doktorlar = _doktorRepository.GetAll().ToList();
+                if (doktorlar.Count == 0)
                 {
                     return ResponseGeneric<List<Doktor>>.Error("Kayıtlı doktorlar bulunamadı.");
                 }
-                return ResponseGeneric<List<Doktor>>.Success(doktor, "Kayıtlı doktorlar getirildi.");
+
+                var kullanıcılar = _kullanıcıRepository.GetAll().ToList();
+                var uzmanlıklar = _uzmanlıkRepository.GetAll().ToList();
+
+                foreach(var d in doktorlar)
+                {
+                    var kullanıcı = kullanıcılar.FirstOrDefault(k => k.Id == d.KullanıcıId);
+                    if(kullanıcı != null)
+                    {
+                        d.İsim = kullanıcı.İsim;
+                        d.Soyisim = kullanıcı.Soyisim;
+                    }
+
+                    var uzmanlık = uzmanlıklar.FirstOrDefault(u => u.Id == d.UzmanlıkId);
+                    if(uzmanlık != null)
+                    {
+                        d.UzmanlıkAdi = uzmanlık.UzmanlıkAdı;
+                    }
+                }
+
+                return ResponseGeneric<List<Doktor>>.Success(doktorlar, "Kayıtlı doktorlar getirildi.");
             }
             catch(Exception ex)
             {

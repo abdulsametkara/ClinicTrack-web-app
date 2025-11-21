@@ -14,8 +14,6 @@ namespace ClinickCore.DTOs
         public int UzmanlıkId { get; set; }
         public string TelefonNumarası { get; set; }
         public string Email { get; set; }
-        public string? DiplomaNo { get; set; }
-        public DateTime? MezuniyetTarihi { get; set; }
         public string? Ünvan { get; set; }
     }
     public class DoktorGüncelleDto
@@ -23,8 +21,6 @@ namespace ClinickCore.DTOs
         public int? UzmanlıkId { get; set; }
         public string? TelefonNumarası { get; set; }
         public string? Email { get; set; }
-        public string? DiplomaNo { get; set; }
-        public DateTime? MezuniyetTarihi { get; set; }
         public string? Ünvan { get; set; }
     }
 

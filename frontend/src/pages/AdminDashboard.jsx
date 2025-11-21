@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, Users, Calendar, Activity, Settings, LayoutDashboard, Search, Menu, Trash2, Edit, Filter, X, Plus, Stethoscope } from 'lucide-react';
+import { LogOut, User, Users, Calendar, Activity, Clock, LayoutDashboard, Search, Menu, Trash2, Edit, Filter, X, Plus, Stethoscope, Save, Edit2, Phone, Mail, CreditCard } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { getAllUsers, getAllAppointments, deleteUser, createUser, updateUser, getAllUzmanliklar, getAllDoktorlar, createUzmanlik, updateUzmanlik, deleteUzmanlik, updateRandevuDurum, deleteRandevu } from '../api';
+import Swal from 'sweetalert2';
+import { getAllUsers, getAllAppointments, deleteUser, createUser, updateUser, getAllUzmanliklar, getAllDoktorlar, getAllHasta, createUzmanlik, updateUzmanlik, deleteUzmanlik, updateRandevuDurum, deleteRandevu, completePastAppointments, updateUserPhone } from '../api';
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const kullaniciAd = localStorage.getItem('kullaniciAd') || 'Admin';
+  const [kullaniciAd, setKullaniciAd] = useState(localStorage.getItem('kullaniciAd') || 'Admin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Aktif Sayfa State'i
@@ -26,6 +27,7 @@ function AdminDashboard() {
   // Uzmanlıklar ve Doktorlar State'i
   const [uzmanliklar, setUzmanliklar] = useState([]);
   const [doktorlar, setDoktorlar] = useState([]); // Doktor tablosundan
+  const [hastalar, setHastalar] = useState([]); // Hasta tablosundan
 
   // Kullanıcı Tablosu State'leri
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +61,14 @@ function AdminDashboard() {
   const fetchData = async () => {
     try {
       setYukleniyor(true);
+      
+      // Önce geçmiş randevuları tamamla
+      try {
+        await completePastAppointments();
+      } catch (err) {
+        console.error('Geçmiş randevular tamamlanamadı:', err);
+      }
+      
       // Paralel istek at
       const [usersRes, appointmentsRes] = await Promise.all([
         getAllUsers(),
@@ -70,18 +80,14 @@ function AdminDashboard() {
       let doktorSayisi = 0;
       let kullaniciListesi = [];
 
-      console.log('Users Response:', usersRes); // Debug
-      
       // Backend camelCase döndürüyor
       if (usersRes.isSuccess) {
         kullaniciListesi = usersRes.data;
-        console.log('Kullanıcı Listesi:', kullaniciListesi); // Debug
         setTumKullanicilar(kullaniciListesi);
         setFilteredUsers(kullaniciListesi); // Başlangıçta hepsi
 
-        hastaSayisi = usersRes.data.filter(u => u.rol === 'Hasta').length;
-        doktorSayisi = usersRes.data.filter(u => u.rol === 'Doktor').length;
-        console.log('Hasta Sayısı:', hastaSayisi, 'Doktor Sayısı:', doktorSayisi); // Debug
+        hastaSayisi = usersRes.data.filter(u => (u.rol || u.Rol) === 'Hasta').length;
+        doktorSayisi = usersRes.data.filter(u => (u.rol || u.Rol) === 'Doktor').length;
       }
 
       // Randevu İstatistikleri
@@ -91,24 +97,58 @@ function AdminDashboard() {
       if (appointmentsRes.isSuccess) {
         const randevular = appointmentsRes.data;
         setTumRandevular(randevular); // Randevuları state'e kaydet
-        randevuSayisi = randevular.filter(r => r.durum === 'Beklemede').length;
+        randevuSayisi = randevular.filter(r => (r.durum || r.Durum) === 'Beklemede').length;
+
+        // Önce tüm hasta kayıtlarını bir kere çek
+        const hastaListesiRes = await getAllHasta();
+        const hastaListesi = hastaListesiRes.data || [];
+        setHastalar(hastaListesi); // State'e kaydet
 
         // Son 5 randevuyu al ve işle
         sonRandevular = randevular
-          .sort((a, b) => new Date(b.randevuTarihi) - new Date(a.randevuTarihi))
+          .sort((a, b) => new Date(b.randevuTarihi || b.RandevuTarihi) - new Date(a.randevuTarihi || a.RandevuTarihi))
           .slice(0, 5)
           .map(r => {
-            // Hasta adını bul
-            const hasta = kullaniciListesi.find(u => u.id === r.hastaId);
-            const hastaAd = hasta ? `${hasta.isim} ${hasta.soyisim}` : 'Bilinmeyen Hasta';
-            
-            return {
-              id: r.id,
-              kullanici: hastaAd,
-              islem: 'Randevu Oluşturdu',
-              tarih: new Date(r.randevuTarihi).toLocaleString('tr-TR'),
-              durum: r.durum
-            };
+            // Hasta bilgisini HastaId'den bul
+            try {
+              const hastaId = r.hastaId || r.HastaId;
+              const hastaKaydi = hastaListesi.find(h => (h.id || h.Id) === hastaId);
+              
+              if (hastaKaydi) {
+                // Hasta kaydındaki KullaniciId ile kullanıcı bilgisini al
+                const kullaniciId = hastaKaydi.kullanıcıId || hastaKaydi.KullanıcıId;
+                const hasta = kullaniciListesi.find(u => (u.id || u.Id) === kullaniciId);
+                
+                const isim = hasta?.isim || hasta?.İsim || 'Bilinmeyen';
+                const soyisim = hasta?.soyisim || hasta?.Soyisim || '';
+                const hastaAd = hasta ? `${isim} ${soyisim}` : `Bilinmeyen (ID: ${kullaniciId})`;
+                  
+                return {
+                  id: r.id || r.Id,
+                  kullanici: hastaAd,
+                  islem: 'Randevu Oluşturdu',
+                  tarih: new Date(r.randevuTarihi || r.RandevuTarihi).toLocaleString('tr-TR'),
+                  durum: r.durum || r.Durum
+                };
+              } else {
+                return {
+                  id: r.id || r.Id,
+                  kullanici: 'Bilinmeyen Hasta',
+                  islem: 'Randevu Oluşturdu',
+                  tarih: new Date(r.randevuTarihi || r.RandevuTarihi).toLocaleString('tr-TR'),
+                  durum: r.durum || r.Durum
+                };
+              }
+            } catch (err) {
+              console.error('Hasta bilgisi alınamadı:', err);
+              return {
+                id: r.id || r.Id,
+                kullanici: 'Hata',
+                islem: 'Randevu Oluşturdu',
+                tarih: new Date(r.randevuTarihi || r.RandevuTarihi).toLocaleString('tr-TR'),
+                durum: r.durum || r.Durum
+              };
+            }
           });
       }
 
@@ -173,10 +213,10 @@ function AdminDashboard() {
     if (searchTerm) {
       const lowerTerm = searchTerm.toLowerCase();
       result = result.filter(user => 
-        (user.isim || user.İsim).toLowerCase().includes(lowerTerm) ||
-        (user.soyisim || user.Soyisim).toLowerCase().includes(lowerTerm) ||
-        (user.email || user.Email).toLowerCase().includes(lowerTerm) ||
-        (user.tcNo || user.TCNo)?.includes(lowerTerm)
+        ((user.isim || user.İsim) || '').toLowerCase().includes(lowerTerm) ||
+        ((user.soyisim || user.Soyisim) || '').toLowerCase().includes(lowerTerm) ||
+        ((user.email || user.Email) || '').toLowerCase().includes(lowerTerm) ||
+        ((user.tcNo || user.TCNo) || '').includes(lowerTerm)
       );
     }
 
@@ -189,19 +229,30 @@ function AdminDashboard() {
   };
 
   const handleDeleteUser = async (id) => {
-    if (window.confirm('Bu kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) {
-      try {
-        const response = await deleteUser(id);
-        if (response.isSuccess) {
-          alert('Kullanıcı başarıyla silindi.');
-          fetchData(); 
-        } else {
-          alert('Hata: ' + response.message);
+    Swal.fire({
+      title: 'Emin misiniz?',
+      text: "Bu kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Evet, sil!',
+      cancelButtonText: 'Vazgeç'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const response = await deleteUser(id);
+          if (response.isSuccess) {
+            Swal.fire('Silindi!', 'Kullanıcı başarıyla silindi.', 'success');
+            fetchData(); 
+          } else {
+            Swal.fire('Hata', response.message, 'error');
+          }
+        } catch (error) {
+          Swal.fire('Hata', 'Silme işlemi sırasında bir hata oluştu.', 'error');
         }
-      } catch (error) {
-        alert('Silme işlemi sırasında bir hata oluştu.');
       }
-    }
+    });
   };
 
   // Modal Açma - Yeni Kullanıcı
@@ -287,44 +338,55 @@ function AdminDashboard() {
       if (uzmanlikModalMode === 'create') {
         const response = await createUzmanlik(uzmanlikFormData.uzmanlikAdi);
         if (response.isSuccess) {
-          alert('Uzmanlık başarıyla oluşturuldu!');
+          Swal.fire('Başarılı', 'Uzmanlık başarıyla oluşturuldu!', 'success');
           handleCloseUzmanlikModal();
           fetchUzmanliklar();
         } else {
-          alert('Hata: ' + response.message);
+          Swal.fire('Hata', response.message, 'error');
         }
       } else {
         const uzmanlikId = selectedUzmanlik.id || selectedUzmanlik.Id;
         const response = await updateUzmanlik(uzmanlikId, uzmanlikFormData.uzmanlikAdi);
         if (response.isSuccess) {
-          alert('Uzmanlık başarıyla güncellendi!');
+          Swal.fire('Başarılı', 'Uzmanlık başarıyla güncellendi!', 'success');
           handleCloseUzmanlikModal();
           fetchUzmanliklar();
         } else {
-          alert('Hata: ' + response.message);
+          Swal.fire('Hata', response.message, 'error');
         }
       }
     } catch (error) {
       console.error('Uzmanlık işlemi hatası:', error);
-      alert('İşlem sırasında bir hata oluştu: ' + (error.response?.data?.message || error.message));
+      Swal.fire('Hata', 'İşlem sırasında bir hata oluştu.', 'error');
     }
   };
 
   const handleDeleteUzmanlik = async (id) => {
-    if (window.confirm('Bu uzmanlığı silmek istediğinize emin misiniz? Bu uzmanlığa bağlı doktorlar etkilenebilir!')) {
-      try {
-        const response = await deleteUzmanlik(id);
-        if (response.isSuccess) {
-          alert('Uzmanlık başarıyla silindi.');
-          fetchUzmanliklar();
-          fetchData(); // Doktorların uzmanlık bilgilerini güncelle
-        } else {
-          alert('Hata: ' + response.message);
+    Swal.fire({
+      title: 'Emin misiniz?',
+      text: "Bu uzmanlığı silmek istediğinize emin misiniz? Bu uzmanlığa bağlı doktorlar etkilenebilir!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Evet, sil!',
+      cancelButtonText: 'Vazgeç'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const response = await deleteUzmanlik(id);
+          if (response.isSuccess) {
+            Swal.fire('Silindi!', 'Uzmanlık başarıyla silindi.', 'success');
+            fetchUzmanliklar();
+            fetchData(); // Doktorların uzmanlık bilgilerini güncelle
+          } else {
+            Swal.fire('Hata', response.message, 'error');
+          }
+        } catch (error) {
+          Swal.fire('Hata', 'Silme işlemi sırasında bir hata oluştu.', 'error');
         }
-      } catch (error) {
-        alert('Silme işlemi sırasında bir hata oluştu.');
       }
-    }
+    });
   };
 
   // RANDEVU YÖNETİMİ FONKSİYONLARI
@@ -332,31 +394,48 @@ function AdminDashboard() {
     try {
       const response = await updateRandevuDurum(randevuId, yeniDurum);
       if (response.isSuccess) {
-        alert(`Randevu durumu "${yeniDurum}" olarak güncellendi.`);
+        Swal.fire({
+            icon: 'success',
+            title: 'Güncellendi',
+            text: `Randevu durumu "${yeniDurum}" olarak güncellendi.`,
+            timer: 1500,
+            showConfirmButton: false
+        });
         fetchData(); // Randevuları yeniden çek
       } else {
-        alert('Hata: ' + response.message);
+        Swal.fire('Hata', response.message, 'error');
       }
     } catch (error) {
       console.error('Randevu güncelleme hatası:', error);
-      alert('Güncelleme sırasında bir hata oluştu.');
+      Swal.fire('Hata', 'Güncelleme sırasında bir hata oluştu.', 'error');
     }
   };
 
   const handleDeleteRandevu = async (id) => {
-    if (window.confirm('Bu randevuyu silmek istediğinize emin misiniz?')) {
-      try {
-        const response = await deleteRandevu(id);
-        if (response.isSuccess) {
-          alert('Randevu başarıyla silindi.');
-          fetchData(); // Randevuları yeniden çek
-        } else {
-          alert('Hata: ' + response.message);
+    Swal.fire({
+      title: 'Emin misiniz?',
+      text: "Bu randevuyu silmek istediğinize emin misiniz?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Evet, sil!',
+      cancelButtonText: 'Vazgeç'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const response = await deleteRandevu(id);
+          if (response.isSuccess) {
+            Swal.fire('Silindi!', 'Randevu başarıyla silindi.', 'success');
+            fetchData(); // Randevuları yeniden çek
+          } else {
+            Swal.fire('Hata', response.message, 'error');
+          }
+        } catch (error) {
+          Swal.fire('Hata', 'Silme işlemi sırasında bir hata oluştu.', 'error');
         }
-      } catch (error) {
-        alert('Silme işlemi sırasında bir hata oluştu.');
       }
-    }
+    });
   };
 
   // Form Submit - Yeni Kullanıcı veya Güncelleme
@@ -364,42 +443,57 @@ function AdminDashboard() {
     e.preventDefault();
     
     try {
-      // Backend'e gönderilecek data (PascalCase)
-      const userData = {
-        İsim: formData.isim,
-        Soyisim: formData.soyisim,
-        Email: formData.email,
-        Parola: formData.parola,
-        TCNo: formData.tcNo,
-        TelefonNumarası: formData.telefonNumarası || '',
-        DoğumTarihi: formData.dogumTarihi || null,
-        Rol: formData.rol,
-        UzmanlıkId: formData.uzmanlikId ? parseInt(formData.uzmanlikId) : null
-      };
+      // Doktor için uzmanlık alanı kontrolü
+      if (formData.rol === 'Doktor' && !formData.uzmanlikId) {
+        Swal.fire('Uyarı', 'Doktor için uzmanlık alanı seçilmelidir!', 'warning');
+        return;
+      }
 
+      // Backend'e gönderilecek data (camelCase)
+      const userData = {
+        isim: formData.isim,
+        soyisim: formData.soyisim,
+        email: formData.email,
+        parola: formData.parola || undefined, // Boşsa gönderme
+        tcNo: formData.tcNo,
+        telefonNumarası: formData.telefonNumarası || '',
+        doğumTarihi: formData.dogumTarihi || null,
+        rol: formData.rol
+      };
+      
+      // Doktor ise uzmanlıkId ekle
+      if (formData.rol === 'Doktor' && formData.uzmanlikId) {
+        userData.uzmanlıkId = parseInt(formData.uzmanlikId);
+      }
+
+      // Parola boşsa ve edit mode'daysa, parola alanını kaldır
+      if (modalMode === 'edit' && !userData.parola) {
+        delete userData.parola;
+      }
+      
       if (modalMode === 'create') {
         const response = await createUser(userData);
         if (response.isSuccess) {
-          alert('Kullanıcı başarıyla oluşturuldu!');
+          Swal.fire('Başarılı', 'Kullanıcı başarıyla oluşturuldu!', 'success');
           handleCloseModal();
           fetchData();
         } else {
-          alert('Hata: ' + response.message);
+          Swal.fire('Hata', response.message, 'error');
         }
       } else {
         const userId = selectedUser.id || selectedUser.Id;
         const response = await updateUser(userId, userData);
         if (response.isSuccess) {
-          alert('Kullanıcı başarıyla güncellendi!');
+          Swal.fire('Başarılı', 'Kullanıcı başarıyla güncellendi!', 'success');
           handleCloseModal();
           fetchData();
         } else {
-          alert('Hata: ' + response.message);
+          Swal.fire('Hata', response.message, 'error');
         }
       }
     } catch (error) {
       console.error('Kullanıcı işlemi hatası:', error);
-      alert('İşlem sırasında bir hata oluştu: ' + (error.response?.data?.message || error.message));
+      Swal.fire('Hata', 'İşlem sırasında bir hata oluştu.', 'error');
     }
   };
 
@@ -414,7 +508,7 @@ function AdminDashboard() {
   const MenuItem = ({ icon: Icon, label, tabName }) => (
     <button
       onClick={() => setActiveTab(tabName)}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
+      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-medium ${
         activeTab === tabName 
           ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
           : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -426,118 +520,105 @@ function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 flex font-sans">
+    <div className="min-h-screen bg-slate-100 flex font-sans text-slate-800">
       {/* SIDEBAR */}
-      <aside className={`bg-slate-900 text-white w-64 flex-shrink-0 fixed h-full z-30 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
+      <aside className={`bg-white w-72 flex-shrink-0 fixed h-full z-30 transition-transform duration-300 border-r border-slate-200 shadow-lg ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="p-8 flex items-center gap-3 mb-6">
+          <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
             <Activity className="w-6 h-6 text-white" />
           </div>
-          <span className="text-xl font-bold tracking-wide">ClinicTrack</span>
+          <span className="text-2xl font-bold tracking-tight text-slate-800">ClinicTrack</span>
         </div>
 
-        <nav className="p-4 space-y-2">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 px-4">Genel</div>
+        <nav className="px-4 space-y-2">
+          <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Yönetim Paneli</p>
           <MenuItem icon={LayoutDashboard} label="Dashboard" tabName="Dashboard" />
           <MenuItem icon={Users} label="Kullanıcılar" tabName="Kullanıcılar" />
           <MenuItem icon={Activity} label="Doktorlar" tabName="Doktorlar" />
           <MenuItem icon={Calendar} label="Randevular" tabName="Randevular" />
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-8 mb-4 px-4">Sistem</div>
+          
+          <div className="mt-8 px-4">
+            {/* Sistem ayracı kaldırıldı */}
+          </div>
           <MenuItem icon={Stethoscope} label="Uzmanlıklar" tabName="Uzmanlıklar" />
-          <MenuItem icon={Settings} label="Ayarlar" tabName="Ayarlar" />
+          {/* Ayarlar menüsü kaldırıldı */}
         </nav>
 
-        <div className="absolute bottom-0 w-full p-6 border-t border-slate-800">
-          <button onClick={handleLogout} className="flex items-center gap-3 text-slate-400 hover:text-red-400 transition w-full">
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Çıkış Yap</span>
+        <div className="absolute bottom-0 w-full p-6 border-t border-slate-100">
+          <button onClick={handleLogout} className="flex items-center gap-3 text-slate-500 hover:text-red-600 transition-colors w-full px-2 font-medium text-sm">
+            <LogOut className="w-4 h-4" />
+            Çıkış Yap
           </button>
         </div>
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 md:ml-64 min-h-screen flex flex-col">
+      <main className="flex-1 md:ml-72 min-h-screen flex flex-col">
         {/* HEADER */}
-        <header className="bg-white shadow-sm h-20 flex items-center justify-between px-8 sticky top-0 z-20 border-b border-slate-200">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-              <Menu className="w-6 h-6" />
+        <header className="md:hidden bg-white shadow-sm h-16 flex items-center justify-between px-4 sticky top-0 z-20">
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2">
+              <Menu className="w-6 h-6 text-slate-600" />
             </button>
-            <div className="hidden md:block">
-              <h2 className="text-xl font-bold text-slate-800">Hoş Geldiniz, {kullaniciAd} 👋</h2>
-              <p className="text-sm text-slate-500">{currentDate}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-8">
-            <div className="relative hidden md:block">
-              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input type="text" placeholder="Ara..." className="pl-10 pr-4 py-2 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 border border-transparent focus:bg-white transition" />
-            </div>
-            
-            <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl font-bold shadow-sm border-2 border-blue-50">
-                {kullaniciAd?.charAt(0).toUpperCase()}
-              </div>
-              <div className="hidden md:block">
-                <p className="text-base font-bold text-slate-700">{kullaniciAd}</p>
-                <p className="text-sm text-slate-500 font-medium">Sistem Yöneticisi</p>
-              </div>
-            </div>
-          </div>
+            <span className="font-bold text-lg">ClinicTrack</span>
+            <div className="w-8"></div>
         </header>
 
         {/* CONTENT AREA */}
-        <div className="p-8">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto w-full">
           {/* Dashboard İçeriği */}
           {activeTab === 'Dashboard' && (
             yukleniyor ? (
-              <div className="text-center py-10 text-slate-500">Veriler yükleniyor...</div>
+              <div className="flex items-center justify-center h-64 text-slate-500">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mr-3"></div>
+                Veriler yükleniyor...
+              </div>
             ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover:shadow-md transition duration-300">
-                    <div>
-                      <p className="text-slate-500 text-sm font-medium mb-1">Toplam Hasta</p>
-                      <h3 className="text-4xl font-bold text-slate-800">{stats.totalHasta}</h3>
+              <div className="space-y-8 animate-fade-in">
+                {/* Hero Section */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-8 md:p-12 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl"></div>
+                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400 opacity-10 rounded-full translate-y-1/3 -translate-x-1/4 blur-2xl"></div>
+                    
+                    <div className="relative z-10 flex items-center justify-between">
+                        <div>
+                            <p className="text-blue-100 font-medium mb-2 flex items-center gap-2">
+                                <Calendar className="w-4 h-4" /> {currentDate}
+                            </p>
+                            <h1 className="text-3xl md:text-4xl font-bold mb-2">Hoş Geldiniz, {kullaniciAd}</h1>
+                            <p className="text-blue-100 max-w-md">Sistem genel durumu ve istatistikleri aşağıda özetlenmiştir.</p>
+                        </div>
                     </div>
-                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                      <Users className="w-8 h-8 text-blue-600" />
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover:shadow-md transition duration-300">
-                    <div>
-                      <p className="text-slate-500 text-sm font-medium mb-1">Toplam Doktor</p>
-                      <h3 className="text-4xl font-bold text-slate-800">{stats.totalDoktor}</h3>
-                    </div>
-                    <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
-                      <Activity className="w-8 h-8 text-purple-600" />
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover:shadow-md transition duration-300">
-                    <div>
-                      <p className="text-slate-500 text-sm font-medium mb-1">Aktif Randevular</p>
-                      <h3 className="text-4xl font-bold text-slate-800">{stats.activeRandevu}</h3>
-                    </div>
-                    <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
-                      <Calendar className="w-8 h-8 text-green-600" />
-                    </div>
-                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-8">
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                      { label: 'Toplam Hasta', value: stats.totalHasta, icon: Users, color: 'blue' },
+                      { label: 'Toplam Doktor', value: stats.totalDoktor, icon: Activity, color: 'purple' },
+                      { label: 'Aktif Randevular', value: stats.activeRandevu, icon: Calendar, color: 'green' }
+                  ].map((stat, idx) => (
+                      <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between hover:shadow-md transition-all hover:-translate-y-1">
+                          <div>
+                              <p className="text-slate-500 text-sm font-medium mb-1">{stat.label}</p>
+                              <h3 className="text-4xl font-bold text-slate-800">{stat.value}</h3>
+                          </div>
+                          <div className={`p-4 bg-${stat.color}-50 rounded-2xl border border-${stat.color}-100 text-${stat.color}-600`}>
+                              <stat.icon className="w-8 h-8" />
+                          </div>
+                      </div>
+                  ))}
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                       <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-blue-500" />
+                        <Activity className="w-5 h-5 text-blue-600" />
                         Son Aktiviteler
                       </h3>
-                      <button className="text-blue-600 text-sm font-medium hover:underline px-4 py-2 bg-blue-50 rounded-lg transition">Tümünü Gör</button>
                     </div>
                     
                     <div className="overflow-x-auto">
                       <table className="w-full">
-                        <thead className="bg-slate-50 text-slate-500 text-sm uppercase font-semibold tracking-wider">
+                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider">
                           <tr>
                             <th className="px-6 py-4 text-left">Kullanıcı / Hasta</th>
                             <th className="px-6 py-4 text-left">İşlem</th>
@@ -545,24 +626,24 @@ function AdminDashboard() {
                             <th className="px-6 py-4 text-left">Durum</th>
                           </tr>
                         </thead>
-                        <tbody className="text-base divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-100">
                           {sonAktiviteler.length > 0 ? (
                             sonAktiviteler.map((item, index) => (
-                              <tr key={index} className="hover:bg-slate-50 transition duration-150">
-                                <td className="px-6 py-5 font-medium text-slate-800 flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-base">
+                              <tr key={index} className="hover:bg-slate-50 transition">
+                                <td className="px-6 py-4 font-bold text-slate-700 flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold">
                                     {item.kullanici.charAt(0)}
                                   </div>
                                   {item.kullanici}
                                 </td>
-                                <td className="px-6 py-5 text-slate-600">{item.islem}</td>
-                                <td className="px-6 py-5 text-slate-500 font-medium">{item.tarih}</td>
-                                <td className="px-6 py-5">
-                                  <span className={`px-4 py-1.5 rounded-full text-sm font-semibold border ${
-                                    item.durum === 'Beklemede' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                    item.durum === 'Tamamlandı' ? 'bg-green-50 text-green-700 border-green-200' :
-                                    item.durum === 'İptal' ? 'bg-red-50 text-red-700 border-red-200' :
-                                    'bg-gray-100 text-gray-600'
+                                <td className="px-6 py-4 text-slate-600 text-sm">{item.islem}</td>
+                                <td className="px-6 py-4 text-slate-500 text-sm font-medium">{item.tarih}</td>
+                                <td className="px-6 py-4">
+                                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                    item.durum === 'Beklemede' ? 'bg-orange-50 text-orange-700' :
+                                    item.durum === 'Tamamlandı' ? 'bg-emerald-50 text-emerald-700' :
+                                    item.durum === 'İptal' ? 'bg-red-50 text-red-700' :
+                                    'bg-slate-100 text-slate-600'
                                   }`}>
                                     {item.durum}
                                   </span>
@@ -571,41 +652,39 @@ function AdminDashboard() {
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="4" className="px-6 py-10 text-center text-slate-400 italic text-base">Henüz bir aktivite bulunmuyor.</td>
+                              <td colSpan="4" className="px-6 py-12 text-center text-slate-400">Henüz bir aktivite bulunmuyor.</td>
                             </tr>
                           )}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                </div>
-              </>
+              </div>
             )
           )}
 
           {/* KULLANICILAR TABLOSU */}
           {activeTab === 'Kullanıcılar' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in">
               {/* Üst Araç Çubuğu */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="relative flex-1 max-w-md">
-                  <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input 
                     type="text" 
                     placeholder="İsim, email veya TC ile ara..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-500 border border-slate-200 transition"
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
                   />
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <Filter className="w-5 h-5 text-gray-500" />
                     <select 
                       value={roleFilter}
                       onChange={(e) => setRoleFilter(e.target.value)}
-                      className="bg-slate-50 border border-slate-200 text-slate-700 text-base rounded-xl focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none"
+                      className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 block p-2.5 outline-none cursor-pointer font-medium"
                     >
                       <option value="Hepsi">Tüm Roller</option>
                       <option value="Hasta">Hastalar</option>
@@ -616,73 +695,73 @@ function AdminDashboard() {
 
                   <button 
                     onClick={handleOpenCreateModal}
-                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium text-base flex items-center gap-2 shadow-sm"
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-bold text-sm flex items-center gap-2 shadow-lg shadow-blue-200"
                   >
-                    <User className="w-4 h-4" />
+                    <Plus className="w-4 h-4" />
                     Kullanıcı Ekle
                   </button>
                 </div>
               </div>
 
               {/* Tablo */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-slate-50 text-slate-500 text-sm uppercase font-semibold tracking-wider">
+                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider">
                       <tr>
                         <th className="px-6 py-4 text-left">Kullanıcı</th>
-                        <th className="px-6 py-4 text-left">ILETISIM</th>
+                        <th className="px-6 py-4 text-left">İletişim</th>
                         <th className="px-6 py-4 text-left">Rol</th>
                         <th className="px-6 py-4 text-left">Kayıt Tarihi</th>
                         <th className="px-6 py-4 text-right">İşlemler</th>
                       </tr>
                     </thead>
-                    <tbody className="text-base divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100">
                       {filteredUsers.length > 0 ? (
                         filteredUsers.map((user) => (
-                          <tr key={user.id || user.Id} className="hover:bg-slate-50 transition duration-150 group">
-                            <td className="px-6 py-5">
+                          <tr key={user.id || user.Id} className="hover:bg-slate-50 transition group">
+                            <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-bold text-lg shadow-sm">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shadow-sm">
                                   {(user.isim || user.İsim)?.charAt(0)}
                                 </div>
                                 <div>
-                                  <div className="font-bold text-slate-800 text-base">{(user.isim || user.İsim)} {(user.soyisim || user.Soyisim)}</div>
-                                  <div className="text-sm text-slate-500">TC: {user.tcNo || user.TCNo}</div>
+                                  <div className="font-bold text-slate-800">{(user.isim || user.İsim)} {(user.soyisim || user.Soyisim)}</div>
+                                  <div className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded inline-block mt-1">TC: {user.tcNo || user.TCNo}</div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-5">
-                              <div className="text-slate-600 text-base">{user.email || user.Email}</div>
-                              <div className="text-sm text-slate-400">{user.telefonNumarası || user.TelefonNumarası || '-'}</div>
+                            <td className="px-6 py-4">
+                              <div className="text-slate-700 font-medium text-sm">{user.email || user.Email}</div>
+                              <div className="text-xs text-slate-400 mt-0.5">{user.telefonNumarası || user.TelefonNumarası || '-'}</div>
                             </td>
-                            <td className="px-6 py-5">
-                              <span className={`px-4 py-1.5 rounded-full text-sm font-semibold border ${
+                            <td className="px-6 py-4">
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
                                 (user.rol || user.Rol) === 'Admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                (user.rol || user.Rol) === 'Doktor' ? 'bg-green-50 text-green-700 border-green-200' :
+                                (user.rol || user.Rol) === 'Doktor' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 'bg-blue-50 text-blue-700 border-blue-200'
                               }`}>
                                 {user.rol || user.Rol}
                               </span>
                             </td>
-                            <td className="px-6 py-5 text-slate-500 text-base">
+                            <td className="px-6 py-4 text-slate-500 text-sm font-medium">
                               {new Date(user.oluşturulmaTarihi || user.OluşturulmaTarihi || Date.now()).toLocaleDateString('tr-TR')}
                             </td>
-                            <td className="px-6 py-5 text-right">
-                              <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
                                 <button 
                                   onClick={() => handleOpenEditModal(user)}
-                                  className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                                   title="Düzenle"
                                 >
-                                  <Edit className="w-5 h-5" />
+                                  <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteUser(user.id || user.Id)}
-                                  className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                                   title="Sil"
                                 >
-                                  <Trash2 className="w-5 h-5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </td>
@@ -691,7 +770,7 @@ function AdminDashboard() {
                       ) : (
                         <tr>
                           <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
-                            <Users className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+                            <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
                             <p>Aradığınız kriterlere uygun kullanıcı bulunamadı.</p>
                           </td>
                         </tr>
@@ -705,62 +784,62 @@ function AdminDashboard() {
 
           {/* DOKTORLAR SAYFASI */}
           {activeTab === 'Doktorlar' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in">
               {/* Doktor İstatistikleri */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-slate-500 text-sm font-medium mb-1">Toplam Doktor</p>
-                      <h3 className="text-4xl font-bold text-slate-800">
+                      <h3 className="text-3xl font-bold text-slate-800">
                         {tumKullanicilar.filter(u => (u.rol || u.Rol) === 'Doktor').length}
                       </h3>
                     </div>
-                    <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
-                      <Activity className="w-8 h-8 text-green-600" />
+                    <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-emerald-600">
+                      <Stethoscope className="w-8 h-8" />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-slate-500 text-sm font-medium mb-1">Aktif Doktorlar</p>
-                      <h3 className="text-4xl font-bold text-slate-800">
+                      <h3 className="text-3xl font-bold text-slate-800">
                         {tumKullanicilar.filter(u => (u.rol || u.Rol) === 'Doktor').length}
                       </h3>
                     </div>
-                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                      <Users className="w-8 h-8 text-blue-600" />
+                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 text-blue-600">
+                      <Activity className="w-8 h-8" />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-slate-500 text-sm font-medium mb-1">Toplam Randevu</p>
-                      <h3 className="text-4xl font-bold text-slate-800">{stats.activeRandevu}</h3>
+                      <h3 className="text-3xl font-bold text-slate-800">{stats.activeRandevu}</h3>
                     </div>
-                    <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
-                      <Calendar className="w-8 h-8 text-purple-600" />
+                    <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 text-purple-600">
+                      <Calendar className="w-8 h-8" />
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Doktor Listesi Tablosu */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 bg-white">
-                  <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-green-500" />
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                  <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
+                    <Stethoscope className="w-5 h-5 text-emerald-600" />
                     Doktor Listesi ve İstatistikleri
                   </h3>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-slate-50 text-slate-500 text-sm uppercase font-semibold tracking-wider">
+                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider">
                       <tr>
                         <th className="px-6 py-4 text-left">Doktor</th>
                         <th className="px-6 py-4 text-left">Uzmanlık</th>
@@ -769,77 +848,62 @@ function AdminDashboard() {
                         <th className="px-6 py-4 text-right">İşlemler</th>
                       </tr>
                     </thead>
-                    <tbody className="text-base divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100">
                       {tumKullanicilar
                         .filter(u => (u.rol || u.Rol) === 'Doktor')
                         .map((kullaniciDoktor) => {
-                          const kullaniciId = kullaniciDoktor.id || kullaniciDoktor.Id; // Kullanıcı ID'si (örn: 2001)
-                          
-                          // Doktor tablosundan Kullanıcı ID'sine göre Doktor ID'sini bul
-                          const doktorBilgisi = doktorlar.find(d => {
-                            const doktorKullaniciId = d.kullaniciId || d.KullanıcıId;
-                            return doktorKullaniciId == kullaniciId; // == kullan (type coercion)
-                          });
-                          const doktorId = doktorBilgisi ? (doktorBilgisi.id || doktorBilgisi.Id) : null; // Doktor ID'si (örn: 1)
-                          
-                          // Uzmanlık bilgisini Doktor tablosundan al (camelCase: uzmanlikId - İngilizce i)
-                          const doktorUzmanlikId = doktorBilgisi ? (doktorBilgisi.uzmanlikId || doktorBilgisi.UzmanlıkId) : null;
+                          const kullaniciId = kullaniciDoktor.id || kullaniciDoktor.Id;
+                          const doktorBilgisi = doktorlar.find(d => (d.kullanıcıId || d.KullanıcıId) == kullaniciId);
+                          const doktorId = doktorBilgisi?.id || doktorBilgisi?.Id;
+                          const doktorUzmanlikId = doktorBilgisi?.uzmanlıkId || doktorBilgisi?.UzmanlıkId;
                           const doktorUzmanlik = uzmanliklar.find(uz => (uz.id || uz.Id) === doktorUzmanlikId);
-                          
-                          // Doktora ait randevu sayısını hesapla (Doktor ID ile)
-                          const randevuSayisi = doktorId ? tumRandevular.filter(r => {
-                            const randevuDoktorId = r.doktorId || r.DoktorId;
-                            return randevuDoktorId === doktorId;
-                          }).length : 0;
-                          
-                          console.log('Randevu Sayısı:', randevuSayisi);
+                          const randevuSayisi = doktorId ? tumRandevular.filter(r => (r.doktorId || r.DoktorId) === doktorId).length : 0;
                           
                           return (
-                            <tr key={kullaniciDoktor.id || kullaniciDoktor.Id} className="hover:bg-slate-50 transition duration-150 group">
-                              <td className="px-6 py-5">
+                            <tr key={kullaniciDoktor.id || kullaniciDoktor.Id} className="hover:bg-slate-50 transition group">
+                              <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center text-green-700 font-bold text-lg shadow-sm">
+                                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold shadow-sm">
                                     {(kullaniciDoktor.isim || kullaniciDoktor.İsim)?.charAt(0)}
                                   </div>
                                   <div>
-                                    <div className="font-bold text-slate-800 text-base">
+                                    <div className="font-bold text-slate-800 text-sm">
                                       Dr. {(kullaniciDoktor.isim || kullaniciDoktor.İsim)} {(kullaniciDoktor.soyisim || kullaniciDoktor.Soyisim)}
                                     </div>
-                                    <div className="text-sm text-slate-500">TC: {kullaniciDoktor.tcNo || kullaniciDoktor.TCNo}</div>
+                                    <div className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded inline-block mt-1">TC: {kullaniciDoktor.tcNo || kullaniciDoktor.TCNo}</div>
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-5">
-                                <span className="px-4 py-1.5 rounded-full text-sm font-semibold bg-green-50 text-green-700 border border-green-200">
-                                  {doktorUzmanlik ? (doktorUzmanlik.uzmanlıkAdı || doktorUzmanlik.UzmanlıkAdı) : 'Belirsiz'}
+                              <td className="px-6 py-4">
+                                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  {doktorUzmanlik?.uzmanlıkAdı || doktorUzmanlik?.UzmanlıkAdı || 'Belirsiz'}
                                 </span>
                               </td>
-                              <td className="px-6 py-5">
-                                <div className="text-slate-600 text-base">{kullaniciDoktor.email || kullaniciDoktor.Email}</div>
-                                <div className="text-sm text-slate-400">{kullaniciDoktor.telefonNumarası || kullaniciDoktor.TelefonNumarası || '-'}</div>
+                              <td className="px-6 py-4">
+                                <div className="text-slate-700 text-sm font-medium">{kullaniciDoktor.email || kullaniciDoktor.Email}</div>
+                                <div className="text-xs text-slate-400 mt-0.5">{kullaniciDoktor.telefonNumarası || kullaniciDoktor.TelefonNumarası || '-'}</div>
                               </td>
-                              <td className="px-6 py-5 text-center">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg">
-                                  <Calendar className="w-4 h-4 text-blue-600" />
-                                  <span className="font-bold text-blue-700">{randevuSayisi}</span>
-                                  <span className="text-sm text-blue-600">randevu</span>
+                              <td className="px-6 py-4 text-center">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-lg border border-blue-100">
+                                  <Calendar className="w-3 h-3 text-blue-600" />
+                                  <span className="font-bold text-blue-700 text-sm">{randevuSayisi}</span>
                                 </div>
                               </td>
-                              <td className="px-6 py-5 text-right">
-                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
                                   <button 
                                     onClick={() => handleOpenEditModal(kullaniciDoktor)}
-                                    className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                                     title="Düzenle"
                                   >
-                                    <Edit className="w-5 h-5" />
+                                    <Edit2 className="w-4 h-4" />
                                   </button>
                                   <button 
                                     onClick={() => handleDeleteUser(kullaniciDoktor.id || kullaniciDoktor.Id)}
-                                    className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                                     title="Sil"
                                   >
-                                    <Trash2 className="w-5 h-5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </td>
@@ -849,7 +913,7 @@ function AdminDashboard() {
                       {tumKullanicilar.filter(u => (u.rol || u.Rol) === 'Doktor').length === 0 && (
                         <tr>
                           <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
-                            <Activity className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+                            <Stethoscope className="w-12 h-12 mx-auto mb-3 opacity-20" />
                             <p>Henüz kayıtlı doktor bulunmuyor.</p>
                           </td>
                         </tr>
@@ -863,76 +927,39 @@ function AdminDashboard() {
 
           {/* RANDEVULAR SAYFASI */}
           {activeTab === 'Randevular' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in">
               {/* Üst İstatistikler */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-500 text-sm font-medium mb-1">Toplam Randevu</p>
-                      <h3 className="text-3xl font-bold text-slate-800">{tumRandevular.length}</h3>
+                {[
+                    { label: 'Toplam Randevu', value: tumRandevular.length, icon: Calendar, color: 'blue' },
+                    { label: 'Beklemede', value: tumRandevular.filter(r => (r.durum || r.Durum) === 'Beklemede').length, icon: Clock, color: 'orange' },
+                    { label: 'Tamamlandı', value: tumRandevular.filter(r => (r.durum || r.Durum) === 'Tamamlandı').length, icon: Activity, color: 'green' },
+                    { label: 'İptal', value: tumRandevular.filter(r => (r.durum || r.Durum) === 'İptal').length, icon: X, color: 'red' }
+                ].map((stat, idx) => (
+                    <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between hover:shadow-md transition">
+                        <div>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{stat.label}</p>
+                            <h3 className={`text-2xl font-bold text-${stat.color}-600`}>{stat.value}</h3>
+                        </div>
+                        <div className={`p-3 bg-${stat.color}-50 rounded-xl text-${stat.color}-600`}>
+                            <stat.icon className="w-6 h-6" />
+                        </div>
                     </div>
-                    <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                      <Calendar className="w-6 h-6 text-blue-600" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-500 text-sm font-medium mb-1">Beklemede</p>
-                      <h3 className="text-3xl font-bold text-yellow-600">
-                        {tumRandevular.filter(r => (r.durum || r.Durum) === 'Beklemede').length}
-                      </h3>
-                    </div>
-                    <div className="p-3 bg-yellow-50 rounded-xl border border-yellow-100">
-                      <Calendar className="w-6 h-6 text-yellow-600" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-500 text-sm font-medium mb-1">Tamamlandı</p>
-                      <h3 className="text-3xl font-bold text-green-600">
-                        {tumRandevular.filter(r => (r.durum || r.Durum) === 'Tamamlandı').length}
-                      </h3>
-                    </div>
-                    <div className="p-3 bg-green-50 rounded-xl border border-green-100">
-                      <Calendar className="w-6 h-6 text-green-600" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-500 text-sm font-medium mb-1">İptal</p>
-                      <h3 className="text-3xl font-bold text-red-600">
-                        {tumRandevular.filter(r => (r.durum || r.Durum) === 'İptal').length}
-                      </h3>
-                    </div>
-                    <div className="p-3 bg-red-50 rounded-xl border border-red-100">
-                      <Calendar className="w-6 h-6 text-red-600" />
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
 
               {/* Randevu Listesi */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 bg-white">
-                  <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-purple-500" />
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                  <h3 className="font-bold text-xl text-slate-800 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-blue-600" />
                     Tüm Randevular
                   </h3>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-slate-50 text-slate-500 text-sm uppercase font-semibold tracking-wider">
+                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider">
                       <tr>
                         <th className="px-6 py-4 text-left">ID</th>
                         <th className="px-6 py-4 text-left">Hasta</th>
@@ -943,64 +970,70 @@ function AdminDashboard() {
                         <th className="px-6 py-4 text-right">İşlemler</th>
                       </tr>
                     </thead>
-                    <tbody className="text-base divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100">
                       {tumRandevular.length > 0 ? (
                         tumRandevular.map((randevu) => {
-                          const hasta = tumKullanicilar.find(u => (u.id || u.Id) === (randevu.hastaId || randevu.HastaId));
+                          // Robust ID retrieval
+                          const randevuId = randevu.id || randevu.Id;
+                          const hastaId = randevu.hastaId || randevu.HastaId;
+                          const doktorId = randevu.doktorId || randevu.DoktorId;
                           
-                          // Doktor ID'den kullanıcıyı bul
-                          const randevuDoktorId = randevu.doktorId || randevu.DoktorId;
-                          const doktorBilgisi = doktorlar.find(d => (d.id || d.Id) === randevuDoktorId);
-                          const doktorKullaniciId = doktorBilgisi ? (doktorBilgisi.kullaniciId || doktorBilgisi.KullanıcıId) : null;
+                          // Find patient record
+                          const hastaKaydi = hastalar.find(h => (h.id || h.Id) === hastaId);
+                          const hastaKullaniciId = hastaKaydi?.kullanıcıId || hastaKaydi?.KullanıcıId;
+                          const hasta = tumKullanicilar.find(u => (u.id || u.Id) === hastaKullaniciId);
+                          
+                          // Find doctor record
+                          const doktorBilgisi = doktorlar.find(d => (d.id || d.Id) === doktorId);
+                          const doktorKullaniciId = doktorBilgisi?.kullanıcıId || doktorBilgisi?.KullanıcıId;
                           const doktorKullanici = tumKullanicilar.find(u => (u.id || u.Id) === doktorKullaniciId);
                           
                           const randevuDurum = randevu.durum || randevu.Durum;
+                          const randevuTarihi = randevu.randevuTarihi || randevu.RandevuTarihi;
+                          const sikayet = randevu.sikayet || randevu.Sikayet;
+
+                          // Helper for names
+                          const hastaAd = hasta ? `${hasta.isim || hasta.İsim || 'Bilinmiyor'} ${hasta.soyisim || hasta.Soyisim || ''}` : 'Bilinmiyor';
+                          const hastaTC = hasta?.tcNo || hasta?.TCNo || '-';
+                          const doktorAd = doktorKullanici ? `Dr. ${doktorKullanici.isim || doktorKullanici.İsim || ''} ${doktorKullanici.soyisim || doktorKullanici.Soyisim || ''}` : 'Bilinmiyor';
 
                           return (
-                            <tr key={randevu.id || randevu.Id} className="hover:bg-slate-50 transition duration-150 group">
-                              <td className="px-6 py-5 font-medium text-slate-600">
-                                #{randevu.id || randevu.Id}
+                            <tr key={randevuId} className="hover:bg-slate-50 transition group">
+                              <td className="px-6 py-4 font-bold text-slate-500 text-sm">
+                                #{randevuId}
                               </td>
-                              <td className="px-6 py-5">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
-                                    {hasta ? (hasta.isim || hasta.İsim)?.charAt(0) : '?'}
-                                  </div>
-                                  <div>
-                                    <div className="font-bold text-slate-800">
-                                      {hasta ? `${hasta.isim || hasta.İsim} ${hasta.soyisim || hasta.Soyisim}` : 'Bilinmiyor'}
-                                    </div>
-                                    <div className="text-sm text-slate-500">TC: {hasta?.tcNo || hasta?.TCNo || '-'}</div>
-                                  </div>
+                              <td className="px-6 py-4">
+                                <div className="font-bold text-slate-800 text-sm">
+                                  {hastaAd}
+                                </div>
+                                <div className="text-xs text-slate-500 font-medium">TC: {hastaTC}</div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="font-medium text-slate-700 text-sm">
+                                  {doktorAd}
                                 </div>
                               </td>
-                              <td className="px-6 py-5">
-                                <div className="font-medium text-slate-700">
-                                  {doktorKullanici ? `Dr. ${doktorKullanici.isim || doktorKullanici.İsim} ${doktorKullanici.soyisim || doktorKullanici.Soyisim}` : 'Bilinmiyor'}
+                              <td className="px-6 py-4">
+                                <div className="text-slate-700 font-bold text-sm">
+                                  {new Date(randevuTarihi).toLocaleDateString('tr-TR')}
+                                </div>
+                                <div className="text-xs text-slate-500 font-medium mt-0.5">
+                                  {new Date(randevuTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                                 </div>
                               </td>
-                              <td className="px-6 py-5">
-                                <div className="text-slate-700 font-medium">
-                                  {new Date(randevu.randevuTarihi || randevu.RandevuTarihi).toLocaleDateString('tr-TR')}
-                                </div>
-                                <div className="text-sm text-slate-500">
-                                  {new Date(randevu.randevuTarihi || randevu.RandevuTarihi).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                              <td className="px-6 py-4">
+                                <div className="text-slate-600 text-sm max-w-xs truncate font-medium">
+                                  {sikayet || '-'}
                                 </div>
                               </td>
-                              <td className="px-6 py-5">
-                                <div className="text-slate-600 text-sm max-w-xs truncate">
-                                  {randevu.sikayet || randevu.Sikayet || '-'}
-                                </div>
-                              </td>
-                              <td className="px-6 py-5">
+                              <td className="px-6 py-4">
                                 <select
                                   value={randevuDurum}
-                                  onChange={(e) => handleUpdateRandevuDurum(randevu.id || randevu.Id, e.target.value)}
-                                  className={`px-4 py-2 rounded-lg text-sm font-semibold border cursor-pointer outline-none ${
-                                    randevuDurum === 'Beklemede' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                    randevuDurum === 'Tamamlandı' ? 'bg-green-50 text-green-700 border-green-200' :
-                                    randevuDurum === 'İptal' ? 'bg-red-50 text-red-700 border-red-200' :
-                                    'bg-gray-50 text-gray-700 border-gray-200'
+                                  onChange={(e) => handleUpdateRandevuDurum(randevuId, e.target.value)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border outline-none cursor-pointer transition ${
+                                    randevuDurum === 'Beklemede' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                    randevuDurum === 'Tamamlandı' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    'bg-red-50 text-red-700 border-red-200'
                                   }`}
                                 >
                                   <option value="Beklemede">Beklemede</option>
@@ -1008,16 +1041,14 @@ function AdminDashboard() {
                                   <option value="İptal">İptal</option>
                                 </select>
                               </td>
-                              <td className="px-6 py-5 text-right">
-                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button 
-                                    onClick={() => handleDeleteRandevu(randevu.id || randevu.Id)}
-                                    className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                    title="Sil"
-                                  >
-                                    <Trash2 className="w-5 h-5" />
-                                  </button>
-                                </div>
+                              <td className="px-6 py-4 text-right">
+                                <button 
+                                  onClick={() => handleDeleteRandevu(randevuId)}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  title="Sil"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </td>
                             </tr>
                           );
@@ -1025,7 +1056,7 @@ function AdminDashboard() {
                       ) : (
                         <tr>
                           <td colSpan="7" className="px-6 py-12 text-center text-slate-400">
-                            <Calendar className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+                            <Calendar className="w-12 h-12 mx-auto mb-3 opacity-20" />
                             <p>Henüz kayıtlı randevu bulunmuyor.</p>
                           </td>
                         </tr>
@@ -1039,16 +1070,16 @@ function AdminDashboard() {
 
           {/* UZMANLIKLAR SAYFASI */}
           {activeTab === 'Uzmanlıklar' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in">
               {/* Üst Başlık ve Buton */}
-              <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-800">Uzmanlık Alanları Yönetimi</h2>
-                  <p className="text-slate-500 text-sm mt-1">Doktorların uzmanlık alanlarını yönetin</p>
+                  <h2 className="text-xl font-bold text-slate-800">Uzmanlık Alanları</h2>
+                  <p className="text-slate-500 text-sm mt-1">Sistemdeki tıbbi uzmanlıkları yönetin</p>
                 </div>
                 <button 
                   onClick={handleOpenCreateUzmanlikModal}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium text-base flex items-center gap-2 shadow-sm"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-bold text-sm flex items-center gap-2 shadow-lg shadow-blue-200"
                 >
                   <Plus className="w-4 h-4" />
                   Uzmanlık Ekle
@@ -1056,17 +1087,17 @@ function AdminDashboard() {
               </div>
 
               {/* Uzmanlık Listesi */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 bg-white">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-slate-50/50">
                   <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                    <Stethoscope className="w-5 h-5 text-blue-500" />
+                    <Stethoscope className="w-5 h-5 text-blue-600" />
                     Kayıtlı Uzmanlıklar
                   </h3>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-slate-50 text-slate-500 text-sm uppercase font-semibold tracking-wider">
+                    <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold tracking-wider">
                       <tr>
                         <th className="px-6 py-4 text-left">ID</th>
                         <th className="px-6 py-4 text-left">Uzmanlık Adı</th>
@@ -1074,36 +1105,36 @@ function AdminDashboard() {
                         <th className="px-6 py-4 text-right">İşlemler</th>
                       </tr>
                     </thead>
-                    <tbody className="text-base divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100">
                       {uzmanliklar.length > 0 ? (
                         uzmanliklar.map((uzmanlik) => (
-                          <tr key={uzmanlik.id || uzmanlik.Id} className="hover:bg-slate-50 transition duration-150 group">
-                            <td className="px-6 py-5 font-medium text-slate-600">
+                          <tr key={uzmanlik.id || uzmanlik.Id} className="hover:bg-slate-50 transition group">
+                            <td className="px-6 py-4 font-bold text-slate-500 text-sm">
                               #{uzmanlik.id || uzmanlik.Id}
                             </td>
-                            <td className="px-6 py-5">
-                              <span className="px-4 py-2 rounded-lg text-base font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            <td className="px-6 py-4">
+                              <span className="px-4 py-2 rounded-lg text-sm font-bold bg-blue-50 text-blue-700 border border-blue-100">
                                 {uzmanlik.uzmanlıkAdı || uzmanlik.UzmanlıkAdı}
                               </span>
                             </td>
-                            <td className="px-6 py-5 text-slate-500 text-base">
+                            <td className="px-6 py-4 text-slate-500 text-sm font-medium">
                               {new Date(uzmanlik.recordDate || uzmanlik.RecordDate || Date.now()).toLocaleDateString('tr-TR')}
                             </td>
-                            <td className="px-6 py-5 text-right">
-                              <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
                                 <button 
                                   onClick={() => handleOpenEditUzmanlikModal(uzmanlik)}
-                                  className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                                   title="Düzenle"
                                 >
-                                  <Edit className="w-5 h-5" />
+                                  <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteUzmanlik(uzmanlik.id || uzmanlik.Id)}
-                                  className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                                   title="Sil"
                                 >
-                                  <Trash2 className="w-5 h-5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </td>
@@ -1112,9 +1143,8 @@ function AdminDashboard() {
                       ) : (
                         <tr>
                           <td colSpan="4" className="px-6 py-12 text-center text-slate-400">
-                            <Stethoscope className="w-12 h-12 mx-auto mb-3 text-slate-200" />
+                            <Stethoscope className="w-12 h-12 mx-auto mb-3 opacity-20" />
                             <p>Henüz kayıtlı uzmanlık alanı bulunmuyor.</p>
-                            <p className="text-sm mt-2">Yukarıdaki "Uzmanlık Ekle" butonunu kullanarak yeni uzmanlık ekleyebilirsiniz.</p>
                           </td>
                         </tr>
                       )}
@@ -1124,45 +1154,38 @@ function AdminDashboard() {
               </div>
             </div>
           )}
-
-          {activeTab === 'Ayarlar' && (
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center py-20">
-              <Settings className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-slate-700 mb-2">Sistem Ayarları</h3>
-              <p className="text-slate-500">Genel sistem ayarları burada olacak.</p>
-            </div>
-          )}
         </div>
       </main>
 
       {/* MODAL - Kullanıcı Ekle/Düzenle */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-800">
-                {modalMode === 'create' ? '🆕 Yeni Kullanıcı Ekle' : '✏️ Kullanıcı Düzenle'}
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                {modalMode === 'create' ? <Plus className="w-5 h-5 text-blue-600" /> : <Edit2 className="w-5 h-5 text-blue-600" />}
+                {modalMode === 'create' ? 'Yeni Kullanıcı Ekle' : 'Kullanıcı Düzenle'}
               </h2>
               <button 
                 onClick={handleCloseModal}
                 className="p-2 hover:bg-slate-100 rounded-lg transition"
               >
-                <X className="w-6 h-6 text-slate-600" />
+                <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
             {/* Modal Body - Form */}
-            <form onSubmit={handleSubmitUser} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitUser} className="p-6 space-y-5">
               {/* Rol Seçimi */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Kullanıcı Rolü *
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Kullanıcı Rolü <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.rol}
                   onChange={(e) => setFormData({ ...formData, rol: e.target.value, uzmanlikId: '' })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700 bg-slate-50/50"
                   required
                 >
                   <option value="Hasta">Hasta</option>
@@ -1173,14 +1196,14 @@ function AdminDashboard() {
 
               {/* Uzmanlık Seçimi (Sadece Doktor için) */}
               {formData.rol === 'Doktor' && (
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Uzmanlık Alanı *
+                <div className="animate-fade-in">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    Uzmanlık Alanı <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.uzmanlikId}
                     onChange={(e) => setFormData({ ...formData, uzmanlikId: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700 bg-slate-50/50"
                     required
                   >
                     <option value="">Uzmanlık Seçiniz</option>
@@ -1196,28 +1219,31 @@ function AdminDashboard() {
               {/* İsim ve Soyisim */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    İsim *
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    İsim <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.isim}
-                    onChange={(e) => setFormData({ ...formData, isim: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
-                    placeholder="Ahmet"
-                    required
-                  />
+                  <div className="relative">
+                    <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="text"
+                        value={formData.isim}
+                        onChange={(e) => setFormData({ ...formData, isim: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                        placeholder="Ad"
+                        required
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Soyisim *
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    Soyisim <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.soyisim}
                     onChange={(e) => setFormData({ ...formData, soyisim: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
-                    placeholder="Yılmaz"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    placeholder="Soyad"
                     required
                   />
                 </div>
@@ -1225,91 +1251,101 @@ function AdminDashboard() {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Email *
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Email <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
-                  placeholder="ahmet@example.com"
-                  required
-                />
+                <div className="relative">
+                    <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    placeholder="ornek@email.com"
+                    required
+                    />
+                </div>
               </div>
 
               {/* Şifre */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Şifre {modalMode === 'create' ? '*' : '(Değiştirmek istemiyorsanız boş bırakın)'}
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Şifre {modalMode === 'create' && <span className="text-red-500">*</span>}
                 </label>
                 <input
                   type="password"
                   value={formData.parola}
                   onChange={(e) => setFormData({ ...formData, parola: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
-                  placeholder="********"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                  placeholder={modalMode === 'create' ? "********" : "Değiştirmek için yeni şifre girin"}
                   required={modalMode === 'create'}
                 />
               </div>
 
               {/* TC No */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  TC Kimlik No *
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  TC Kimlik No <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.tcNo}
-                  onChange={(e) => setFormData({ ...formData, tcNo: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
-                  placeholder="12345678901"
-                  maxLength="11"
-                  required
-                />
+                <div className="relative">
+                    <CreditCard className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                    type="text"
+                    value={formData.tcNo}
+                    onChange={(e) => setFormData({ ...formData, tcNo: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                    placeholder="11 haneli TC No"
+                    maxLength="11"
+                    required
+                    />
+                </div>
               </div>
 
               {/* Telefon ve Doğum Tarihi */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
                     Telefon
                   </label>
-                  <input
-                    type="tel"
-                    value={formData.telefonNumarası}
-                    onChange={(e) => setFormData({ ...formData, telefonNumarası: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
-                    placeholder="05XXXXXXXXX"
-                  />
+                  <div className="relative">
+                    <Phone className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="tel"
+                        value={formData.telefonNumarası}
+                        onChange={(e) => setFormData({ ...formData, telefonNumarası: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                        placeholder="05XXXXXXXXX"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
                     Doğum Tarihi
                   </label>
                   <input
                     type="date"
                     value={formData.dogumTarihi}
                     onChange={(e) => setFormData({ ...formData, dogumTarihi: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-700"
                   />
                 </div>
               </div>
 
               {/* Modal Footer - Butonlar */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 mt-6">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-medium text-base"
+                  className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium text-base shadow-sm"
+                  className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-bold shadow-lg shadow-blue-200 flex items-center gap-2"
                 >
-                  {modalMode === 'create' ? '✅ Kullanıcı Oluştur' : '💾 Değişiklikleri Kaydet'}
+                  <Save className="w-4 h-4" />
+                  {modalMode === 'create' ? 'Kullanıcı Oluştur' : 'Kaydet'}
                 </button>
               </div>
             </form>
@@ -1319,53 +1355,55 @@ function AdminDashboard() {
 
       {/* MODAL - Uzmanlık Ekle/Düzenle */}
       {isUzmanlikModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-scale-in">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-              <h2 className="text-2xl font-bold text-slate-800">
-                {uzmanlikModalMode === 'create' ? '🩺 Yeni Uzmanlık Ekle' : '✏️ Uzmanlık Düzenle'}
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                {uzmanlikModalMode === 'create' ? <Plus className="w-5 h-5 text-blue-600" /> : <Edit2 className="w-5 h-5 text-blue-600" />}
+                {uzmanlikModalMode === 'create' ? 'Yeni Uzmanlık' : 'Uzmanlık Düzenle'}
               </h2>
               <button 
                 onClick={handleCloseUzmanlikModal}
                 className="p-2 hover:bg-slate-100 rounded-lg transition"
               >
-                <X className="w-6 h-6 text-slate-600" />
+                <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
             {/* Modal Body - Form */}
-            <form onSubmit={handleSubmitUzmanlik} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitUzmanlik} className="p-6 space-y-5">
               {/* Uzmanlık Adı */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Uzmanlık Adı *
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Uzmanlık Adı <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={uzmanlikFormData.uzmanlikAdi}
                   onChange={(e) => setUzmanlikFormData({ ...uzmanlikFormData, uzmanlikAdi: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-base"
-                  placeholder="Örn: Kardiyoloji, Ortopedi, KBB..."
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
+                  placeholder="Örn: Kardiyoloji"
                   required
                 />
-                <p className="text-xs text-slate-500 mt-2">Bu uzmanlık alanı doktor eklerken kullanılabilecek.</p>
+                <p className="text-xs text-slate-400 mt-2 font-medium">Bu uzmanlık alanı doktor eklerken kullanılabilecek.</p>
               </div>
 
               {/* Modal Footer - Butonlar */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 mt-6">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
                 <button
                   type="button"
                   onClick={handleCloseUzmanlikModal}
-                  className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition font-medium text-base"
+                  className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium text-base shadow-sm"
+                  className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-bold shadow-lg shadow-blue-200 flex items-center gap-2"
                 >
-                  {uzmanlikModalMode === 'create' ? '✅ Uzmanlık Ekle' : '💾 Değişiklikleri Kaydet'}
+                  <Save className="w-4 h-4" />
+                  {uzmanlikModalMode === 'create' ? 'Ekle' : 'Kaydet'}
                 </button>
               </div>
             </form>

@@ -33,7 +33,7 @@ namespace ClinickTrack.Tests.Services
             _mockConfig.Setup(x => x["JwtSettings:Audience"])
                 .Returns("ClinickTrackClient");
             _mockConfig.Setup(x => x["JwtSettings:ExpiryInMinutes"])
-                .Returns("60");
+                .Returns("6 0");
             
             _service = new KullanıcıService(_mockRepo.Object, _mockHastaRepo.Object, _mockConfig.Object);
         }

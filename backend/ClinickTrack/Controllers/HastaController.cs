@@ -55,7 +55,7 @@ namespace ClinickTrackApi.Controllers
             return Ok(sonuc);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Hasta")]
         [HttpPut("update/{id}")]
         public IActionResult HastaGüncelle(int id, [FromBody] HastaGüncelleDto dto)
         {
