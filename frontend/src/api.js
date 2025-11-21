@@ -2,8 +2,7 @@
 import axios from 'axios';
 
 // Backend URL'i
-const API_URL = 'http://35.242.200.6/api';
-
+const API_URL = 'https://clinick-app-samet.duckdns.org/api'; 
 // Axios instance
 const api = axios.create({
   baseURL: API_URL,
