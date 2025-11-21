@@ -28,7 +28,14 @@ function Login() {
         const isim = response.data.isim || response.data.İsim;
         const rol = response.data.rol || response.data.Rol;
 
-        console.log('Token alındı:', token?.substring(0, 20) + '...', 'İsim:', isim, 'Rol:', rol);
+        console.log('Token alındı:', token?.substring(0, 20) + '...', 'İsim:', isim, 'Rol:', rol, 'İlkGiris:', response.data.ilkGiris);
+
+        // İlk giriş kontrolü
+        if (response.data.ilkGiris === true) {
+          // Parola belirleme sayfasına yönlendir
+          navigate('/set-password', { state: { email: formData.email } });
+          return;
+        }
 
         localStorage.setItem('token', token);
         localStorage.setItem('kullaniciAd', isim);

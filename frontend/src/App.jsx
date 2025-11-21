@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import SetPassword from './pages/SetPassword';
 import AdminDashboard from './pages/AdminDashboard';
 import DoktorDashboard from './pages/DoktorDashboard';
 import HastaDashboard from './pages/HastaDashboard';
@@ -56,6 +57,9 @@ function App() {
         
         {/* Register sayfası */}
         <Route path="/register" element={<Register />} />
+        
+        {/* Parola Belirleme sayfası */}
+        <Route path="/set-password" element={<SetPassword />} />
         
         {/* Admin Panel - sadece Admin rolü erişebilir */}
         <Route 

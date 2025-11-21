@@ -22,15 +22,18 @@ namespace ClinickService.Services
     {
         private readonly IGenericRepository<Kullanıcı> _kullanıcıRepository;
         private readonly IGenericRepository<Hasta> _hastaRepository;
+        private readonly IGenericRepository<Doktor> _doktorRepository;
         private readonly IConfiguration _configuration;
         
         public KullanıcıService(
             IGenericRepository<Kullanıcı> kullanıcıRepository, 
             IGenericRepository<Hasta> hastaRepository,
+            IGenericRepository<Doktor> doktorRepository,
             IConfiguration configuration)
         {
             _kullanıcıRepository = kullanıcıRepository;
             _hastaRepository = hastaRepository;
+            _doktorRepository = doktorRepository;
             _configuration = configuration;
         }
 
@@ -38,9 +41,17 @@ namespace ClinickService.Services
         {
             try
             {
-                if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Parola))
+                Console.WriteLine($"[KULLANICI OLUSTUR] Gelen DTO: İsim={dto.İsim}, Soyisim={dto.Soyisim}, Email={dto.Email}, Rol={dto.Rol}, UzmanlıkId={dto.UzmanlıkId}");
+                
+                if (string.IsNullOrEmpty(dto.Email))
                 {
-                    return ResponseGeneric<Kullanıcı>.Error("Email ve parola boş olamaz.");
+                    return ResponseGeneric<Kullanıcı>.Error("Email boş olamaz.");
+                }
+                
+                // Sadece Hasta ve Admin için parola zorunlu (Doktor ilk girişte belirleyecek)
+                if ((dto.Rol == "Hasta" || dto.Rol == "Admin") && string.IsNullOrEmpty(dto.Parola))
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Parola boş olamaz.");
                 }
 
                 if (string.IsNullOrEmpty(dto.İsim) || string.IsNullOrEmpty(dto.Soyisim))
@@ -93,15 +104,38 @@ namespace ClinickService.Services
                     Soyisim = dto.Soyisim,
                     TCNo = dto.TCNo,
                     Email = dto.Email,
-                    Parola = HashPassword(dto.Parola),
+                    // Doktor için parola boşsa geçici parola ata, ilk girişte değiştirecek
+                    Parola = string.IsNullOrEmpty(dto.Parola) ? HashPassword(Guid.NewGuid().ToString()) : HashPassword(dto.Parola),
                     Rol = dto.Rol,
                     DoğumTarihi = dto.DoğumTarihi,
                     UzmanlıkId = dto.UzmanlıkId,
                     TelefonNumarası = dto.TelefonNumarası,
-                    OluşturulmaTarihi = DateTime.Now
+                    OluşturulmaTarihi = DateTime.Now,
+                    İlkGiris = dto.Rol == "Doktor" && string.IsNullOrEmpty(dto.Parola) // Doktor için parola boşsa ilk giriş true
                 };
 
                 _kullanıcıRepository.Create(yeniKullanıcı);
+
+                // Rol'e göre ilgili tabloya kayıt ekle
+                if (dto.Rol == "Hasta")
+                {
+                    var yeniHasta = new Hasta
+                    {
+                        KullanıcıId = yeniKullanıcı.Id,
+                        RecordDate = DateTime.Now
+                    };
+                    _hastaRepository.Create(yeniHasta);
+                }
+                else if (dto.Rol == "Doktor")
+                {
+                    var yeniDoktor = new Doktor
+                    {
+                        KullanıcıId = yeniKullanıcı.Id,
+                        UzmanlıkId = dto.UzmanlıkId.Value,
+                        RecordDate = DateTime.Now
+                    };
+                    _doktorRepository.Create(yeniDoktor);
+                }
 
                 yeniKullanıcı.Parola = null;
 
@@ -162,6 +196,12 @@ namespace ClinickService.Services
                 if (tcKontrol)
                 {
                     return ResponseGeneric<Kullanıcı>.Error("Bu TC No başka bir kullanıcı tarafından kullanılıyor.");
+                }
+
+                // Doktor için uzmanlık kontrolü
+                if (dto.Rol == "Doktor" && !dto.UzmanlıkId.HasValue)
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Doktor için uzmanlık alanı zorunludur.");
                 }
 
                 // Güncelleme
@@ -445,7 +485,8 @@ namespace ClinickService.Services
                     Email = kullanıcı.Email,
                     İsim = kullanıcı.İsim,
                     Soyisim = kullanıcı.Soyisim,
-                    Rol = kullanıcı.Rol
+                    Rol = kullanıcı.Rol,
+                    İlkGiris = kullanıcı.İlkGiris
                 };
 
                 return ResponseGeneric<LoginResponseDto>.Success(loginResponse, "Giriş işlemi başarılıyla tamamlandı.");
@@ -454,6 +495,36 @@ namespace ClinickService.Services
             catch (Exception ex)
             {
                 return ResponseGeneric<LoginResponseDto>.Error("Bir hata oluştu. " + ex.Message);
+            }
+        }
+
+
+        public ResponseGeneric<Kullanıcı> TelefonGuncelle(int id, string yeniTelefon)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(yeniTelefon))
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Yeni telefon numarası boş olamaz.");
+                }
+
+                var kullanıcı = _kullanıcıRepository.GetById(id);
+
+                if (kullanıcı == null)
+                {
+                    return ResponseGeneric<Kullanıcı>.Error("Girilen id'ye ait kullanıcı bulunamadı.");
+                }
+
+                kullanıcı.TelefonNumarası = yeniTelefon;
+                _kullanıcıRepository.Update(kullanıcı);
+
+                kullanıcı.Parola = null;
+
+                return ResponseGeneric<Kullanıcı>.Success(kullanıcı, "Telefon numarası başarıyla güncellendi.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseGeneric<Kullanıcı>.Error("Bir hata oluştu. " + ex.Message);
             }
         }
 
@@ -475,6 +546,39 @@ namespace ClinickService.Services
             string girilenHash = HashPassword(girilenParola);
             
             return girilenHash == kayıtlıHashedParola;
+        }
+
+        public Responses İlkParolaBelirle(İlkParolaBelirleDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.YeniParola))
+                {
+                    return Responses.Error("Email ve yeni parola boş olamaz.");
+                }
+
+                var kullanıcı = _kullanıcıRepository.GetAll().FirstOrDefault(u => u.Email == dto.Email);
+                if (kullanıcı == null)
+                {
+                    return Responses.Error("Kullanıcı bulunamadı.");
+                }
+
+                if (!kullanıcı.İlkGiris)
+                {
+                    return Responses.Error("Bu işlem sadece ilk giriş için geçerlidir.");
+                }
+
+                // Parolayı güncelle ve İlkGiris flag'ini false yap
+                kullanıcı.Parola = HashPassword(dto.YeniParola);
+                kullanıcı.İlkGiris = false;
+                _kullanıcıRepository.Update(kullanıcı);
+
+                return Responses.Success("Parola başarıyla belirlendi.");
+            }
+            catch (Exception ex)
+            {
+                return Responses.Error("Bir hata oluştu. " + ex.Message);
+            }
         }
 
         private string GenerateJwtToken(Kullanıcı kullanıcı)

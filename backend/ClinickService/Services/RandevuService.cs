@@ -20,17 +20,21 @@ namespace ClinickService.Services
         private readonly IGenericRepository<Hasta> _hastaRepository;
         private readonly IGenericRepository<Uzmanlık> _uzmanlıkRepository;
         private readonly IGenericRepository<Randevu> _randevuRepository;
+        private readonly IGenericRepository<Kullanıcı> _kullanıcıRepository;
+
         public RandevuService(
             IGenericRepository<Doktor> doktorRepository,
             IGenericRepository<Hasta> hastaRepository,
             IGenericRepository<Uzmanlık> uzmanlıkRepository,
-            IGenericRepository<Randevu> randevuRepository
+            IGenericRepository<Randevu> randevuRepository,
+            IGenericRepository<Kullanıcı> kullanıcıRepository
             )
         {
             _doktorRepository = doktorRepository;
             _hastaRepository = hastaRepository;
             _uzmanlıkRepository = uzmanlıkRepository;
             _randevuRepository = randevuRepository;
+            _kullanıcıRepository = kullanıcıRepository;
         }
         public Responses DoktorNotEkle(int randevuId, string not)
         {
@@ -69,6 +73,31 @@ namespace ClinickService.Services
                 {
                     return ResponseGeneric<List<Randevu>>.Error("Doktora ait randevu bulunamadı.");
                 }
+
+                // İsimleri doldur
+                var hastaIds = randevular.Select(r => r.HastaId).Distinct().ToList();
+                var hastalar = _hastaRepository.GetAll().Where(h => hastaIds.Contains(h.Id)).ToList();
+                
+                var kullaniciIds = hastalar.Select(h => h.KullanıcıId).Distinct().ToList();
+                var kullanicilar = _kullanıcıRepository.GetAll().Where(k => kullaniciIds.Contains(k.Id)).ToList();
+
+                foreach(var r in randevular)
+                {
+                    var hasta = hastalar.FirstOrDefault(h => h.Id == r.HastaId);
+                    if(hasta != null)
+                    {
+                         var kullanici = kullanicilar.FirstOrDefault(k => k.Id == hasta.KullanıcıId);
+                         if(kullanici != null)
+                         {
+                             r.HastaAdi = kullanici.İsim;
+                             r.HastaSoyadi = kullanici.Soyisim;
+                             r.HastaTCNo = kullanici.TCNo;
+                             r.HastaTelefon = kullanici.TelefonNumarası;
+                             r.HastaEmail = kullanici.Email;
+                         }
+                    }
+                }
+
                 return ResponseGeneric<List<Randevu>>.Success(randevular, "Doktora ait randevular başarıyla getirildi");
             }
             catch(Exception ex)
@@ -81,21 +110,37 @@ namespace ClinickService.Services
         {
             try
             {
-                var gecmisRandevular = _randevuRepository.GetAll().Where(x => x.RandevuTarihi < DateTime.Now && x.Durum == "Beklemede").ToList();
+                var suAn = DateTime.Now;
+                Console.WriteLine($"[GEÇMİŞ RANDEVU] Şu an: {suAn}");
+                
+                var tumRandevular = _randevuRepository.GetAll().ToList();
+                Console.WriteLine($"[GEÇMİŞ RANDEVU] Toplam randevu sayısı: {tumRandevular.Count}");
+                
+                var gecmisRandevular = tumRandevular.Where(x => x.RandevuTarihi < suAn && x.Durum == "Beklemede").ToList();
+                
+                Console.WriteLine($"[GEÇMİŞ RANDEVU] Geçmiş ve beklemede olan: {gecmisRandevular.Count}");
+                foreach (var r in gecmisRandevular)
+                {
+                    Console.WriteLine($"  - ID: {r.Id}, Tarih: {r.RandevuTarihi}, Durum: {r.Durum}");
+                }
+                
                 if (gecmisRandevular.Count == 0)
                 {
-                    return Responses.Error("Geçmiş ve tamamlanması gereken randevu bulunamadı.");
+                    return Responses.Success("Geçmiş ve tamamlanması gereken randevu bulunamadı.");
                 }
+                
                 foreach (var randevu in gecmisRandevular)
                 {
                     randevu.Durum = "Tamamlandı";
                     _randevuRepository.Update(randevu);
+                    Console.WriteLine($"[GEÇMİŞ RANDEVU] Randevu ID {randevu.Id} tamamlandı olarak işaretlendi.");
                 }
 
-                return Responses.Success("Geçmiş randevu durumları otomatik olarak güncellendi.");
+                return Responses.Success($"{gecmisRandevular.Count} adet geçmiş randevu otomatik olarak tamamlandı.");
             }
             catch(Exception ex)
             {
+                Console.WriteLine($"[GEÇMİŞ RANDEVU HATA] {ex.Message}");
                 return Responses.Error("Bir hata oluştu." + ex.Message);
             }
         }
@@ -115,6 +160,39 @@ namespace ClinickService.Services
                 {
                     return ResponseGeneric<List<Randevu>>.Error("Hastaya ait randevu bulunamadı");
                 }
+                // Doktor ve Uzmanlık isimlerini doldur
+                var doktorIds = randevular.Select(r => r.DoktorId).Distinct().ToList();
+                var doktorlar = _doktorRepository.GetAll().Where(d => doktorIds.Contains(d.Id)).ToList();
+                var doktorKullaniciIds = doktorlar.Select(d => d.KullanıcıId).Distinct().ToList();
+                var doktorKullanicilar = _kullanıcıRepository.GetAll().Where(k => doktorKullaniciIds.Contains(k.Id)).ToList();
+
+                var uzmanlikIds = doktorlar.Select(d => d.UzmanlıkId).Distinct().ToList();
+                var uzmanliklar = _uzmanlıkRepository.GetAll().Where(u => uzmanlikIds.Contains(u.Id)).ToList();
+
+
+                foreach (var r in randevular)
+                {
+                     // Hasta bilgileri zaten yukarıda dolduruldu veya doldurulmalı...
+                     // (Aynı mantıkla doktor bilgilerini dolduralım)
+                     
+                     var doktor = doktorlar.FirstOrDefault(d => d.Id == r.DoktorId);
+                     if (doktor != null)
+                     {
+                         var k = doktorKullanicilar.FirstOrDefault(u => u.Id == doktor.KullanıcıId);
+                         if (k != null)
+                         {
+                             r.DoktorAdi = k.İsim;
+                             r.DoktorSoyadi = k.Soyisim;
+                         }
+                         
+                         var u = uzmanliklar.FirstOrDefault(uz => uz.Id == doktor.UzmanlıkId);
+                         if (u != null)
+                         {
+                             r.UzmanlıkAdi = u.UzmanlıkAdı;
+                         }
+                     }
+                }
+
                 return ResponseGeneric<List<Randevu>>.Success(randevular, "Hastaya ait randevular başarıyla getirildi.");
             }
             catch(Exception ex)
@@ -285,6 +363,50 @@ namespace ClinickService.Services
             catch (Exception ex)
             {
                 return Responses.Error("Bir hata oluştu." + ex.Message);
+            }
+        }
+        public ResponseGeneric<List<string>> GetMusaitRandevuSaatleri(int doktorId, DateTime tarih)
+        {
+            try
+            {
+                // Hafta sonu kontrolü
+                if (tarih.DayOfWeek == DayOfWeek.Saturday || tarih.DayOfWeek == DayOfWeek.Sunday)
+                {
+                    return ResponseGeneric<List<string>>.Error("Hafta sonları randevu alınamaz.");
+                }
+
+                var baslangicSaati = new TimeSpan(9, 0, 0);
+                var bitisSaati = new TimeSpan(17, 0, 0);
+                var suAn = DateTime.Now;
+
+                var doluRandevular = _randevuRepository.GetAll()
+                    .Where(r => r.DoktorId == doktorId && 
+                           r.RandevuTarihi.Date == tarih.Date && 
+                           r.Durum != "İptal")
+                    .Select(r => r.RandevuTarihi.TimeOfDay)
+                    .ToList();
+
+                var musaitSaatler = new List<string>();
+
+                for (var saat = baslangicSaati; saat < bitisSaati; saat = saat.Add(TimeSpan.FromHours(1)))
+                {
+                    // Geçmiş saat kontrolü (Eğer seçilen tarih bugün ise)
+                    if (tarih.Date == suAn.Date && saat < suAn.TimeOfDay)
+                    {
+                        continue;
+                    }
+
+                    if (!doluRandevular.Contains(saat))
+                    {
+                        musaitSaatler.Add(saat.ToString(@"hh\:mm"));
+                    }
+                }
+
+                return ResponseGeneric<List<string>>.Success(musaitSaatler, "Müsait saatler getirildi.");
+            }
+            catch (Exception ex)
+            {
+                return ResponseGeneric<List<string>>.Error("Bir hata oluştu: " + ex.Message);
             }
         }
     }

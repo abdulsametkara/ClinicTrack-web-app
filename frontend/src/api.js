@@ -31,6 +31,15 @@ export const login = async (email, parola) => {
   return response.data;
 };
 
+// İLK PAROLA BELİRLE
+export const ilkParolaBelirle = async (email, yeniParola) => {
+  const response = await api.post('/Kullanici/ilkParolaBelirle', {
+    email: email,
+    yeniParola: yeniParola
+  });
+  return response.data;
+};
+
 // REGISTER - Hasta kaydı (self-registration)
 export const register = async (userData) => {
   const response = await api.post('/Kullanici/kayitOl', userData);
@@ -46,6 +55,12 @@ export const getProfile = async () => {
 // TÜM KULLANICILARI GETİR (Admin için)
 export const getAllUsers = async () => {
   const response = await api.get('/Kullanici/getAll');
+  return response.data;
+};
+
+// ID İLE KULLANICI GETİR (Admin ve Doktor için)
+export const getUserById = async (id) => {
+  const response = await api.get(`/Kullanici/getById/${id}`);
   return response.data;
 };
 
@@ -73,6 +88,38 @@ export const getAllAppointments = async () => {
   return response.data;
 };
 
+// HASTA RANDEVULARINI GETİR
+export const getPatientAppointments = async (hastaId) => {
+  const response = await api.get(`/Randevu/hasta/${hastaId}`);
+  return response.data;
+};
+
+// RANDEVU İPTAL
+export const cancelRandevu = async (id) => {
+  const response = await api.put(`/Randevu/cancel/${id}`);
+  return response.data;
+};
+
+// HASTA BİLGİLERİNİ GÜNCELLE (Hasta için)
+export const updateHasta = async (id, hastaData) => {
+  const response = await api.put(`/Hasta/update/${id}`, hastaData);
+  return response.data;
+};
+
+// TELEFON NUMARASI GÜNCELLE
+export const updateUserPhone = async (id, yeniTelefon) => {
+  const response = await api.put(`/Kullanici/updatePhone/${id}`, JSON.stringify(yeniTelefon), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+  return response.data;
+};
+
+// DOKTOR RANDEVULARINI GETİR (Doktor için)
+export const getDoktorAppointments = async (doktorId) => {
+  const response = await api.get(`/Randevu/doktor/${doktorId}`);
+  return response.data;
+};
+
 // RANDEVU DURUM GUNCELLE
 export const updateRandevuDurum = async (id, durum) => {
   const response = await api.put(`/Randevu/updateStatus/${id}`, JSON.stringify(durum), {
@@ -81,9 +128,35 @@ export const updateRandevuDurum = async (id, durum) => {
   return response.data;
 };
 
+// RANDEVU EKLE
+export const createRandevu = async (randevuData) => {
+  const response = await api.post('/Randevu/add', randevuData);
+  return response.data;
+};
+
 // RANDEVU SIL
 export const deleteRandevu = async (id) => {
   const response = await api.delete(`/Randevu/delete/${id}`);
+  return response.data;
+};
+
+// DOKTOR NOTU EKLE
+export const addDoktorNote = async (id, note) => {
+  const response = await api.put(`/Randevu/addNote/${id}`, JSON.stringify(note), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+  return response.data;
+};
+
+// GEÇMİŞ RANDEVULARI TAMAMLA
+export const completePastAppointments = async () => {
+  const response = await api.post('/Randevu/completePastAppointments');
+  return response.data;
+};
+
+// MÜSAİT RANDEVU SAATLERİNİ GETİR
+export const getAvailableSlots = async (doktorId, tarih) => {
+  const response = await api.get(`/Randevu/getAvailableSlots?doktorId=${doktorId}&tarih=${tarih}`);
   return response.data;
 };
 
@@ -118,6 +191,12 @@ export const deleteUzmanlik = async (id) => {
 // TÜM DOKTORLARI GETİR
 export const getAllDoktorlar = async () => {
   const response = await api.get('/Doktor/getAll');
+  return response.data;
+};
+
+// TÜM HASTALARI GETİR
+export const getAllHasta = async () => {
+  const response = await api.get('/Hasta/getAll');
   return response.data;
 };
 

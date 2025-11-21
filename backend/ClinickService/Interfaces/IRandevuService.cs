@@ -22,6 +22,7 @@ namespace ClinickService.Interfaces
         Responses DoktorNotEkle(int randevuId, string not);
         Responses GeçmişRandevularıTamamla();
         Responses RandevuSil(int randevuId);
+        ResponseGeneric<List<string>> GetMusaitRandevuSaatleri(int doktorId, DateTime tarih);
 
     }
 }
