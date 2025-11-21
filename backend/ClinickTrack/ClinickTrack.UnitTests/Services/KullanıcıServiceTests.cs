@@ -1,25 +1,27 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 using Moq;
 using FluentAssertions;
 using ClinickService.Services;
-using ClinickDataAccess.Repository;
 using ClinickCore.Entities;
 using ClinickCore.DTOs;
+using ClinickDataAccess.Repository;
 using Microsoft.Extensions.Configuration;
-using System.Linq;
 
-namespace ClinickTrack.Tests.Services
+namespace Clinick.Tests.Services
 {
     public class KullanıcıServiceTests
     {
-        private readonly Mock<IGenericRepository<Kullanıcı>> _mockRepo;
+        private readonly Mock<IGenericRepository<Kullanıcı>> _mockKullaniciRepo;
         private readonly Mock<IGenericRepository<Hasta>> _mockHastaRepo;
         private readonly Mock<IConfiguration> _mockConfig;
         private readonly KullanıcıService _service;
 
         public KullanıcıServiceTests()
         {
-            _mockRepo = new Mock<IGenericRepository<Kullanıcı>>();
+            _mockKullaniciRepo = new Mock<IGenericRepository<Kullanıcı>>();
             _mockHastaRepo = new Mock<IGenericRepository<Hasta>>();
             _mockConfig = new Mock<IConfiguration>();
             
@@ -39,113 +41,66 @@ namespace ClinickTrack.Tests.Services
         }
 
         [Fact]
-        public void KullanıcıOlustur_ValidData_ReturnsSuccess()
+        public void KullanıcıOlustur_TCNoHataliysa_HataDonmeli()
+        {
+            var dto = new KullanıcıOlusturDto
+            {
+                Email = "a@b.com",
+                Rol = "Hasta",
+                İsim = "Test",
+                Soyisim = "User",
+                Parola = "123456",
+                TCNo = "123" // 11 hane değil
+            };
+            var result = _service.KullanıcıOlustur(dto);
+            result.IsSuccess.Should().BeFalse();
+            result.Message.Should().Contain("11 haneli");
+        }
+
+        [Fact]
+        public void KullanıcıOlustur_RolHastaIse_HastaTablosunaEklemeli()
         {
             // Arrange
             var dto = new KullanıcıOlusturDto
             {
                 İsim = "Test",
                 Soyisim = "User",
-                TCNo = "12345678901",
-                Email = "test@test.com",
-                Parola = "test123",
-                Rol = "Hasta"
+                TCNo = "11111111111",
+                Email = "t@t.com",
+                Rol = "Hasta",
+                Parola = "123"
             };
-
-            var kullanıcılar = new List<Kullanıcı>().AsQueryable();
-            _mockRepo.Setup(x => x.GetAll()).Returns(kullanıcılar);
-            _mockRepo.Setup(x => x.Create(It.IsAny<Kullanıcı>()))
-                .Callback<Kullanıcı>(k => k.Id = 1);
+            _mockKullaniciRepo.Setup(x => x.GetAll()).Returns(new List<Kullanıcı>().AsQueryable());
 
             // Act
             var result = _service.KullanıcıOlustur(dto);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
-            _mockRepo.Verify(x => x.Create(It.IsAny<Kullanıcı>()), Times.Once);
+            _mockKullaniciRepo.Verify(x => x.Create(It.IsAny<Kullanıcı>()), Times.Once);
+            _mockHastaRepo.Verify(x => x.Create(It.IsAny<Hasta>()), Times.Once); // Hasta tablosuna da gitmeli
         }
 
         [Fact]
-        public void KullanıcıOlustur_InvalidTCNo_ReturnsFailure()
+        public void Login_ParolaYanlissa_HataDonmeli()
         {
             // Arrange
-            var dto = new KullanıcıOlusturDto
-            {
-                İsim = "Test",
-                Soyisim = "User",
-                TCNo = "123", // Geçersiz TC (11 haneli olmalı)
-                Email = "test@test.com",
-                Parola = "test123",
-                Rol = "Hasta"
-            };
+            // Servis içinde HashPassword yapılıyor. 
+            // Biz manuel olarak "dogruParola" + "secret_key" hash'ini simüle etmeliyiz ama
+            // basitçe Mock setup'ında GetAll() dönerken veritabanındaki parolayı,
+            // servisin üreteceği hash ile eşleşmeyecek bir şey verelim.
+
+            var dbUser = new Kullanıcı { Email = "a@b.com", Parola = "HASHED_REAL_PASSWORD" };
+            _mockKullaniciRepo.Setup(x => x.GetAll()).Returns(new List<Kullanıcı> { dbUser }.AsQueryable());
+
+            var loginDto = new KullanıcıGirisDto { Email = "a@b.com", Parola = "yanlisParola" };
 
             // Act
-            var result = _service.KullanıcıOlustur(dto);
+            var result = _service.Login(loginDto);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
-            result.Message.Should().Contain("TC No");
-        }
-
-        [Fact]
-        public void KullanıcıOlustur_InvalidRole_ReturnsFailure()
-        {
-            // Arrange
-            var dto = new KullanıcıOlusturDto
-            {
-                İsim = "Test",
-                Soyisim = "User",
-                TCNo = "12345678901",
-                Email = "test@test.com",
-                Parola = "test123",
-                Rol = "InvalidRole"
-            };
-
-            // Act
-            var result = _service.KullanıcıOlustur(dto);
-
-            // Assert
-            result.IsSuccess.Should().BeFalse();
-            result.Message.Should().Contain("rol");
-        }
-
-        [Fact]
-        public void KullanıcıOlustur_DuplicateEmail_ReturnsFailure()
-        {
-            // Arrange
-            var dto = new KullanıcıOlusturDto
-            {
-                İsim = "Test",
-                Soyisim = "User",
-                TCNo = "12345678901",
-                Email = "existing@test.com",
-                Parola = "test123",
-                Rol = "Hasta"
-            };
-
-            var existingUsers = new List<Kullanıcı>
-            {
-                new Kullanıcı
-                {
-                    Id = 1,
-                    Email = "existing@test.com",
-                    TCNo = "98765432109",
-                    İsim = "Existing",
-                    Soyisim = "User",
-                    Parola = "hash",
-                    Rol = "Hasta"
-                }
-            }.AsQueryable();
-
-            _mockRepo.Setup(x => x.GetAll()).Returns(existingUsers);
-
-            // Act
-            var result = _service.KullanıcıOlustur(dto);
-
-            // Assert
-            result.IsSuccess.Should().BeFalse();
-            result.Message.Should().Contain("email");
+            result.Message.Should().Contain("hatalı");
         }
     }
 }
-

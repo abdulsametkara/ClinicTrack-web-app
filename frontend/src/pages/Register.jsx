@@ -267,34 +267,7 @@ function Register() {
               </div>
             </div>
 
-            {/* Rol Seçimi */}
-            <div className="flex gap-4 py-2">
-              <label className={`flex-1 cursor-pointer border rounded-xl p-3 flex items-center justify-center gap-2 transition ${rol === 'Hasta' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300'}`}>
-                <input
-                  type="radio"
-                  name="rol"
-                  value="Hasta"
-                  checked={rol === 'Hasta'}
-                  onChange={(e) => setRol(e.target.value)}
-                  className="hidden"
-                />
-                <User className="w-5 h-5" />
-                <span className="font-medium">Hasta</span>
-              </label>
-              
-              <label className={`flex-1 cursor-pointer border rounded-xl p-3 flex items-center justify-center gap-2 transition ${rol === 'Doktor' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300'}`}>
-                <input
-                  type="radio"
-                  name="rol"
-                  value="Doktor"
-                  checked={rol === 'Doktor'}
-                  onChange={(e) => setRol(e.target.value)}
-                  className="hidden"
-                />
-                <Activity className="w-5 h-5" />
-                <span className="font-medium">Doktor</span>
-              </label>
-            </div>
+          
 
             <div className="flex items-start gap-2 pt-2">
               <input
