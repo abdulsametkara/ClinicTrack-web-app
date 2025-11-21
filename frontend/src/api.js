@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Backend URL'i
-const API_URL = 'https://localhost:7117/api';
+const API_URL = 'http://35.242.200.6/api';
 
 // Axios instance (her istekte kullanılacak)
 const api = axios.create({
