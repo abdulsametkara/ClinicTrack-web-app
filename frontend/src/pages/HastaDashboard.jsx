@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, User, Calendar, Clock, Plus, FileText, Menu, Activity, Home, X, ChevronRight, UserCircle, MapPin, Phone, Heart, Edit2, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { getAllDoktorlar, getAllUzmanliklar, getAvailableSlots, createRandevu, getProfile, getPatientAppointments, cancelRandevu, updateHasta, updateUserPhone } from '../api';
+import { getAllDoktorlar, getAllUzmanliklar, getAvailableSlots, createRandevu, getProfile, getPatientAppointments, cancelRandevu, updateHasta, updateUserPhone, getHastaProfil } from '../api';
 
 function HastaDashboard() {
   const navigate = useNavigate();
@@ -59,29 +59,25 @@ function HastaDashboard() {
                   setCurrentUserId(profileRes.data.id);
                   setUserProfile(profileRes.data);
                   
-                  // 2. Hasta Profilini al (Hasta tablosu verileri)
-                  const token = localStorage.getItem('token');
-                  const hastaRes = await fetch('http://35.242.200.6/api/Hasta/profil', {
-                      headers: { 'Authorization': `Bearer ${token}` }
-                  });
-                  const hastaData = await hastaRes.json();
-                  
-                  if (hastaData.isSuccess) {
-                      const hId = hastaData.data.id;
-                      setHastaId(hId);
-                      setPatientProfile(hastaData.data);
-                      
-                      // Initialize edit form
-                      setEditForm({
-                          phone: profileRes.data.telefonNumarası || '',
-                          address: hastaData.data.adres || '',
-                          emergencyContact: hastaData.data.acilDurumKişisi || '',
-                          emergencyPhone: hastaData.data.acilDurumTelefon || ''
-                      });
+                  // 2. Hasta Profilini al (api.js üzerinden)
+const hastaData = await getHastaProfil();
 
-                      // 3. Randevuları al
-                      fetchAppointments(hId);
-                  }
+if (hastaData.isSuccess) {
+    const hId = hastaData.data.id;
+    setHastaId(hId);
+    setPatientProfile(hastaData.data);
+
+    // Edit formunu doldur
+    setEditForm({
+        phone: profileRes.data.telefonNumarası || '',
+        address: hastaData.data.adres || '',
+        emergencyContact: hastaData.data.acilDurumKişisi || '',
+        emergencyPhone: hastaData.data.acilDurumTelefon || ''
+    });
+
+    // 3. Randevuları al
+    fetchAppointments(hId);
+}
               }
           } catch (error) {
               console.error("Veriler yüklenemedi", error);
