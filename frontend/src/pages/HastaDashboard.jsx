@@ -784,33 +784,41 @@ function HastaDashboard() {
                                     <div className="animate-fade-in">
                                         <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">Doktor Seçin</label>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {/* GÜNCELLENEN FİLTRELEME KODU */}
-                                            {doctors.filter(d => {
-                                                const docUzmanlik = d.uzmanlıkId || d.uzmanlikId || d.UzmanlıkId || d.UzmanlikId;
-                                                return docUzmanlik == selectedDepartment;
-                                            }).map(doc => (
-                                                <button
-                                                    key={doc.id}
-                                                    onClick={() => {
-                                                        setSelectedDoctor(doc);
-                                                        setStep(2);
-                                                    }}
-                                                    className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all text-left group bg-white"
-                                                >
-                                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 font-bold group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                                        Dr
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                                                            {doc.isim || doc.İsim} {doc.soyisim || doc.Soyisim}
-                                                        </h4>
-                                                        <p className="text-sm text-slate-500">
-                                                            {departments.find(dep => (dep.id || dep.Id) == (doc.uzmanlıkId || doc.uzmanlikId))?.uzmanlıkAdı}
-                                                        </p>
-                                                    </div>
-                                                    <ChevronRight className="w-5 h-5 text-slate-300 ml-auto group-hover:text-blue-600" />
-                                                </button>
-                                            ))}
+                                            {/* BU KISMI ESKİ FİLTRELEME KODUNUN YERİNE YAPIŞTIR */}
+
+{doctors.filter(d => {
+    // Akıllı ID Bulucu: Büyük/Küçük harf ve Türkçe karakter farkını yok sayar
+    const keys = Object.keys(d);
+    const idKey = keys.find(k => k.toLowerCase().includes('uzmanlik') || k.toLowerCase().includes('uzmanlık'));
+    const docUzmanlikId = idKey ? d[idKey] : null;
+
+    // Debug için konsola yazdıralım (F12'de görebilirsin)
+    // console.log("Doktor:", d.isim, "Uzmanlık ID:", docUzmanlikId, "Seçilen:", selectedDepartment);
+
+    return docUzmanlikId == selectedDepartment;
+}).map(doc => (
+    <button
+        key={doc.id || doc.Id}
+        onClick={() => {
+            setSelectedDoctor(doc);
+            setStep(2);
+        }}
+        className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all text-left group bg-white"
+    >
+        <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 font-bold group-hover:bg-blue-600 group-hover:text-white transition-colors">
+            Dr
+        </div>
+        <div>
+            <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                {doc.isim || doc.İsim} {doc.soyisim || doc.Soyisim}
+            </h4>
+            <p className="text-sm text-slate-500">
+                {departments.find(dep => (dep.id || dep.Id) == selectedDepartment)?.uzmanlıkAdı}
+            </p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-slate-300 ml-auto group-hover:text-blue-600" />
+    </button>
+))}
                                             {doctors.filter(d => (d.uzmanlıkId || d.uzmanlikId) == selectedDepartment).length === 0 && (
                                                 <div className="text-slate-500 text-sm col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
                                                     Bu bölümde henüz doktor bulunmuyor.
