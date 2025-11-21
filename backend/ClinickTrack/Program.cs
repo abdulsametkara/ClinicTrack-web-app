@@ -60,17 +60,18 @@ builder.Services.AddScoped<IRandevuService, RandevuService>();
 builder.Services.AddScoped<IHastaService, HastaService>();
 builder.Services.AddScoped<IKullanıcıService, KullanıcıService>();
 
-//CORS Yapılandırması
+// --- CORS AYARI GÜNCELLENDİ ---
+// Her yerden gelen isteğe izin verecek şekilde (AllowAll) değiştirdik.
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        var allowedOrigins = builder.Configuration.GetSection("CORS:AllowedOrigins").Get<string[]>();
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
+    options.AddPolicy("AllowAll",
+        builder =>
+        {
+            builder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+        });
 });
 
 //JWT Yapılandırması
@@ -101,8 +102,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseCors("AllowFrontend");
+
+// --- CORS MIDDLEWARE GÜNCELLENDİ ---
+app.UseCors("AllowAll");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
