@@ -61,7 +61,7 @@ function HastaDashboard() {
                   
                   // 2. Hasta Profilini al (Hasta tablosu verileri)
                   const token = localStorage.getItem('token');
-                  const hastaRes = await fetch('https://localhost:7117/api/Hasta/profil', {
+                  const hastaRes = await fetch('http://35.242.200.6/api/Hasta/profil', {
                       headers: { 'Authorization': `Bearer ${token}` }
                   });
                   const hastaData = await hastaRes.json();
