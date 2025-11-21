@@ -183,4 +183,10 @@ export const updateHasta = async (id, hastaData) => {
   return response.data;
 };
 
+// HASTA PROFİLİNİ GETİR (Hasta Dashboard için)
+export const getHastaProfil = async () => {
+  const response = await api.get('/Hasta/profil');
+  return response.data;
+};
+
 export default api;
