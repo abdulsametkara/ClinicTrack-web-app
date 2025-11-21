@@ -1,4 +1,4 @@
-// API çağrıları için tek dosya - DÜZELTİLMİŞ VERSİYON
+// API çağrıları için tek dosya - FİNAL VERSİYON
 import axios from 'axios';
 
 // Backend URL'i
@@ -23,7 +23,6 @@ api.interceptors.request.use((config) => {
 
 // ----------------------------------------------------------------------
 // KULLANICI İŞLEMLERİ (Route: api/Kullanici)
-// Backend'de [Route("api/Kullanici")] tanımlı olduğu için 'Kullanici' yazıyoruz.
 // ----------------------------------------------------------------------
 
 export const login = async (email, parola) => {
@@ -77,8 +76,60 @@ export const updateUserPhone = async (id, yeniTelefon) => {
 };
 
 // ----------------------------------------------------------------------
+// HASTA İŞLEMLERİ (Route: api/Hasta)
+// ----------------------------------------------------------------------
+
+export const getAllHasta = async () => {
+  const response = await api.get('/Hasta/getAll');
+  return response.data;
+};
+
+export const updateHasta = async (id, hastaData) => {
+  const response = await api.put(`/Hasta/update/${id}`, hastaData);
+  return response.data;
+};
+
+// YENİ EKLENEN FONKSİYON: HASTA PROFİLİ
+export const getHastaProfil = async () => {
+  const response = await api.get('/Hasta/profil');
+  return response.data;
+};
+
+// ----------------------------------------------------------------------
+// DOKTOR İŞLEMLERİ (Route: api/Doktor)
+// ----------------------------------------------------------------------
+
+export const getAllDoktorlar = async () => {
+  const response = await api.get('/Doktor/getAll');
+  return response.data;
+};
+
+// ----------------------------------------------------------------------
+// UZMANLIK İŞLEMLERİ (Route: api/Uzmanlik)
+// ----------------------------------------------------------------------
+
+export const getAllUzmanliklar = async () => {
+  const response = await api.get('/Uzmanlik/getAll');
+  return response.data;
+};
+
+export const createUzmanlik = async (uzmanlikAdi) => {
+  const response = await api.post('/Uzmanlik/add', JSON.stringify(uzmanlikAdi));
+  return response.data;
+};
+
+export const updateUzmanlik = async (id, uzmanlikAdi) => {
+  const response = await api.put(`/Uzmanlik/update/${id}`, JSON.stringify(uzmanlikAdi));
+  return response.data;
+};
+
+export const deleteUzmanlik = async (id) => {
+  const response = await api.delete(`/Uzmanlik/delete/${id}`);
+  return response.data;
+};
+
+// ----------------------------------------------------------------------
 // RANDEVU İŞLEMLERİ (Route: api/Randevu)
-// Backend'de [Route("api/[controller]")] var, sınıf adı RandevuController -> 'Randevu'
 // ----------------------------------------------------------------------
 
 export const getAllAppointments = async () => {
@@ -87,13 +138,11 @@ export const getAllAppointments = async () => {
 };
 
 export const getPatientAppointments = async (hastaId) => {
-  // Backend: [HttpGet("hasta/{hastaId}")]
   const response = await api.get(`/Randevu/hasta/${hastaId}`);
   return response.data;
 };
 
 export const getDoktorAppointments = async (doktorId) => {
-  // Backend: [HttpGet("doktor/{doktorId}")]
   const response = await api.get(`/Randevu/doktor/${doktorId}`);
   return response.data;
 };
@@ -130,62 +179,6 @@ export const completePastAppointments = async () => {
 
 export const getAvailableSlots = async (doktorId, tarih) => {
   const response = await api.get(`/Randevu/getAvailableSlots?doktorId=${doktorId}&tarih=${tarih}`);
-  return response.data;
-};
-
-// ----------------------------------------------------------------------
-// UZMANLIK İŞLEMLERİ (Route: api/Uzmanlik)
-// Backend'de [Route("api/Uzmanlik")] tanımlı -> 'Uzmanlik'
-// ----------------------------------------------------------------------
-
-export const getAllUzmanliklar = async () => {
-  const response = await api.get('/Uzmanlik/getAll');
-  return response.data;
-};
-
-export const createUzmanlik = async (uzmanlikAdi) => {
-  const response = await api.post('/Uzmanlik/add', JSON.stringify(uzmanlikAdi));
-  return response.data;
-};
-
-export const updateUzmanlik = async (id, uzmanlikAdi) => {
-  const response = await api.put(`/Uzmanlik/update/${id}`, JSON.stringify(uzmanlikAdi));
-  return response.data;
-};
-
-export const deleteUzmanlik = async (id) => {
-  const response = await api.delete(`/Uzmanlik/delete/${id}`);
-  return response.data;
-};
-
-// ----------------------------------------------------------------------
-// DOKTOR İŞLEMLERİ (Route: api/Doktor)
-// Backend'de [Route("api/[controller]")] var, sınıf adı DoktorController -> 'Doktor'
-// ----------------------------------------------------------------------
-
-export const getAllDoktorlar = async () => {
-  const response = await api.get('/Doktor/getAll');
-  return response.data;
-};
-
-// ----------------------------------------------------------------------
-// HASTA İŞLEMLERİ (Route: api/Hasta)
-// Backend'de [Route("api/[controller]")] var, sınıf adı HastaController -> 'Hasta'
-// ----------------------------------------------------------------------
-
-export const getAllHasta = async () => {
-  const response = await api.get('/Hasta/getAll');
-  return response.data;
-};
-
-export const updateHasta = async (id, hastaData) => {
-  const response = await api.put(`/Hasta/update/${id}`, hastaData);
-  return response.data;
-};
-
-// HASTA PROFİLİNİ GETİR (Hasta Dashboard için)
-export const getHastaProfil = async () => {
-  const response = await api.get('/Hasta/profil');
   return response.data;
 };
 

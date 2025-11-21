@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, User, Calendar, Clock, Plus, FileText, Menu, Activity, Home, X, ChevronRight, UserCircle, MapPin, Phone, Heart, Edit2, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
+// getHastaProfil eklendi
 import { getAllDoktorlar, getAllUzmanliklar, getAvailableSlots, createRandevu, getProfile, getPatientAppointments, cancelRandevu, updateHasta, updateUserPhone, getHastaProfil } from '../api';
 
 function HastaDashboard() {
@@ -59,25 +60,25 @@ function HastaDashboard() {
                   setCurrentUserId(profileRes.data.id);
                   setUserProfile(profileRes.data);
                   
-                  // 2. Hasta Profilini al (api.js üzerinden)
-const hastaData = await getHastaProfil();
+                  // 2. Hasta Profilini al (api.js üzerinden güvenli çağrı)
+                  const hastaData = await getHastaProfil();
+                  
+                  if (hastaData.isSuccess) {
+                      const hId = hastaData.data.id;
+                      setHastaId(hId);
+                      setPatientProfile(hastaData.data);
+                      
+                      // Initialize edit form
+                      setEditForm({
+                          phone: profileRes.data.telefonNumarası || '',
+                          address: hastaData.data.adres || '',
+                          emergencyContact: hastaData.data.acilDurumKişisi || '',
+                          emergencyPhone: hastaData.data.acilDurumTelefon || ''
+                      });
 
-if (hastaData.isSuccess) {
-    const hId = hastaData.data.id;
-    setHastaId(hId);
-    setPatientProfile(hastaData.data);
-
-    // Edit formunu doldur
-    setEditForm({
-        phone: profileRes.data.telefonNumarası || '',
-        address: hastaData.data.adres || '',
-        emergencyContact: hastaData.data.acilDurumKişisi || '',
-        emergencyPhone: hastaData.data.acilDurumTelefon || ''
-    });
-
-    // 3. Randevuları al
-    fetchAppointments(hId);
-}
+                      // 3. Randevuları al
+                      fetchAppointments(hId);
+                  }
               }
           } catch (error) {
               console.error("Veriler yüklenemedi", error);
@@ -109,7 +110,7 @@ if (hastaData.isSuccess) {
       }
   };
 
-  // Modal açıldığında verileri yükle
+  // Modal açıldığında verileri yükle (GÜNCELLENDİ)
   useEffect(() => {
     if (showRandevuModal && departments.length === 0) {
       const fetchData = async () => {
@@ -119,7 +120,13 @@ if (hastaData.isSuccess) {
           const docRes = await getAllDoktorlar();
           
           if (deptRes.isSuccess) setDepartments(deptRes.data);
-          if (docRes.isSuccess) setDoctors(docRes.data);
+          
+          if (docRes.isSuccess) {
+              console.log("✅ DOKTORLAR GELDİ:", docRes.data); 
+              setDoctors(docRes.data);
+          } else {
+              console.error("❌ DOKTOR API HATASI:", docRes.message);
+          }
         } catch (error) {
           console.error('Veri yükleme hatası:', error);
         } finally {
@@ -777,7 +784,11 @@ if (hastaData.isSuccess) {
                                     <div className="animate-fade-in">
                                         <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">Doktor Seçin</label>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {doctors.filter(d => d.uzmanlıkId === selectedDepartment).map(doc => (
+                                            {/* GÜNCELLENEN FİLTRELEME KODU */}
+                                            {doctors.filter(d => {
+                                                const docUzmanlik = d.uzmanlıkId || d.uzmanlikId || d.UzmanlıkId || d.UzmanlikId;
+                                                return docUzmanlik == selectedDepartment;
+                                            }).map(doc => (
                                                 <button
                                                     key={doc.id}
                                                     onClick={() => {
@@ -790,13 +801,17 @@ if (hastaData.isSuccess) {
                                                         Dr
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{doc.isim} {doc.soyisim}</h4>
-                                                        <p className="text-sm text-slate-500">{doc.uzmanlıkAdi}</p>
+                                                        <h4 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                                                            {doc.isim || doc.İsim} {doc.soyisim || doc.Soyisim}
+                                                        </h4>
+                                                        <p className="text-sm text-slate-500">
+                                                            {departments.find(dep => (dep.id || dep.Id) == (doc.uzmanlıkId || doc.uzmanlikId))?.uzmanlıkAdı}
+                                                        </p>
                                                     </div>
                                                     <ChevronRight className="w-5 h-5 text-slate-300 ml-auto group-hover:text-blue-600" />
                                                 </button>
                                             ))}
-                                            {doctors.filter(d => d.uzmanlıkId === selectedDepartment).length === 0 && (
+                                            {doctors.filter(d => (d.uzmanlıkId || d.uzmanlikId) == selectedDepartment).length === 0 && (
                                                 <div className="text-slate-500 text-sm col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
                                                     Bu bölümde henüz doktor bulunmuyor.
                                                 </div>
