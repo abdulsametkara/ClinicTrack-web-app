@@ -16,6 +16,7 @@ namespace Clinick.Tests.Services
     {
         private readonly Mock<IGenericRepository<Kullanıcı>> _mockKullaniciRepo;
         private readonly Mock<IGenericRepository<Hasta>> _mockHastaRepo;
+        private readonly Mock<IGenericRepository<Doktor>> _mockDoktorRepo;
         private readonly Mock<IConfiguration> _mockConfig;
         private readonly KullanıcıService _service;
 
@@ -23,6 +24,7 @@ namespace Clinick.Tests.Services
         {
             _mockKullaniciRepo = new Mock<IGenericRepository<Kullanıcı>>();
             _mockHastaRepo = new Mock<IGenericRepository<Hasta>>();
+            _mockDoktorRepo = new Mock<IGenericRepository<Doktor>>();
             _mockConfig = new Mock<IConfiguration>();
             
             // appsettings değerlerini mock'la
@@ -35,9 +37,13 @@ namespace Clinick.Tests.Services
             _mockConfig.Setup(x => x["JwtSettings:Audience"])
                 .Returns("ClinickTrackClient");
             _mockConfig.Setup(x => x["JwtSettings:ExpiryInMinutes"])
-                .Returns("6 0");
+                .Returns("60");
             
-            _service = new KullanıcıService(_mockRepo.Object, _mockHastaRepo.Object, _mockConfig.Object);
+            _service = new KullanıcıService(
+                _mockKullaniciRepo.Object, 
+                _mockHastaRepo.Object, 
+                _mockDoktorRepo.Object,
+                _mockConfig.Object);
         }
 
         [Fact]
